@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>es.gob.afirma.jmulticard</groupId>
 	<artifactId>jmulticard-base</artifactId>
-	<version>1.5.2.cosium-SNAPSHOT</version>
+	<version>1.5.3.cosium-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>jmulticard-base</name>
@@ -209,6 +209,7 @@
 					</plugin>
 
 					<plugin>
+
 						<artifactId>maven-compiler-plugin</artifactId>
 						<version>3.6.2</version>
 						<configuration>
