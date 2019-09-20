@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>es.gob.afirma.jmulticard</groupId>
 	<artifactId>jmulticard-base</artifactId>
-	<version>1.5</version>
+	<version>1.5.1.cosium-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	
 	<name>jmulticard-base</name>
@@ -33,20 +33,20 @@
 	</licenses>
 
 	<scm>
-		<connection>scm:git:https://github.com/ctt-gob-es/jmulticard.git</connection>
-		<developerConnection>scm:git:ssh://github.com/ctt-gob-es/jmulticard.git</developerConnection>
-		<url>https://github.com/ctt-gob-es/jmulticard</url>
+		<connection>scm:git:https://github.com/Cosium/jmulticard.git</connection>
+		<developerConnection>scm:git:ssh://github.com/Cosium/jmulticard.git</developerConnection>
+		<url>https://github.com/Cosium/jmulticard</url>
 	</scm>
-	
+
 	<distributionManagement>
-	  <snapshotRepository>
-		<id>ossrh</id>
-		<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-	  </snapshotRepository>
-	  <repository>
-		<id>ossrh</id>
-		<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-	  </repository>
+		<snapshotRepository>
+			<id>nexus-cosium-dev-snapshots</id>
+			<url>https://nexus.cosium.dev/repository/maven-snapshots/</url>
+		</snapshotRepository>
+		<repository>
+			<id>nexus-cosium-dev-releases</id>
+			<url>https://nexus.cosium.dev/repository/maven-releases/</url>
+		</repository>
 	</distributionManagement>
 	
 	<properties>
@@ -212,22 +212,6 @@
 							<source>1.7</source>
 							<target>1.7</target>
 						</configuration>
-					</plugin>
-					
-					
-					<plugin>
-					  <groupId>org.apache.maven.plugins</groupId>
-					  <artifactId>maven-gpg-plugin</artifactId>
-					  <version>1.5</version>
-					  <executions>
-						<execution>
-						  <id>sign-artifacts</id>
-						  <phase>verify</phase>
-						  <goals>
-							<goal>sign</goal>
-						  </goals>
-						</execution>
-					  </executions>
 					</plugin>
 					
 				</plugins>
