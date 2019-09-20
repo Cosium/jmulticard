@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>es.gob.afirma.jmulticard</groupId>
 	<artifactId>jmulticard-base</artifactId>
-	<version>1.5.2.cosium-SNAPSHOT</version>
+	<version>1.5.2.cosium</version>
 	<packaging>pom</packaging>
 	
 	<name>jmulticard-base</name>
@@ -35,7 +35,7 @@
 		<connection>scm:git:git@github.com:Cosium/jmulticard.git</connection>
 		<developerConnection>scm:git:git@github.com:Cosium/jmulticard.git</developerConnection>
 		<url>https://github.com/Cosium/jmulticard</url>
-	  <tag>HEAD</tag>
+	  <tag>jmulticard-base-1.5.2.cosium</tag>
   </scm>
 
 	<distributionManagement>
