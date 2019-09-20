@@ -6,11 +6,11 @@
 	<artifactId>jmulticard-base</artifactId>
 	<version>1.5.2.cosium-SNAPSHOT</version>
 	<packaging>pom</packaging>
-	
+
 	<name>jmulticard-base</name>
 	<description>Proyecto Java para el uso de DNIe y tarjetas CERES</description>
 	<url>https://administracionelectronica.gob.es/ctt/clienteafirma</url>
-	
+
 	<developers>
 		<developer>
 			<name>Secretaría General de Administración Digital</name>
@@ -19,7 +19,7 @@
 			<organizationUrl>https://administracionelectronica.gob.es</organizationUrl>
 		</developer>
 	</developers>
-	
+
 	<licenses>
 		<license>
 			<name>GPL-v2.0</name>
@@ -48,11 +48,11 @@
 			<url>https://nexus.cosium.dev/repository/maven-releases/</url>
 		</repository>
 	</distributionManagement>
-	
+
 	<properties>
 		<project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
 	</properties>
-	
+
 	<dependencies>
 		<dependency>
 			<groupId>junit</groupId>
@@ -103,9 +103,9 @@
 
 	    </profile>
 
-	
-	
-	
+
+
+
 		<!-- Construccion por defecto -->
 		<profile>
 			<id>env-dev</id>
@@ -117,7 +117,7 @@
       		</activation>
       		<build>
        			<plugins>
-	
+
 					<plugin>
 						<artifactId>maven-compiler-plugin</artifactId>
 						<version>3.6.2</version>
@@ -130,8 +130,8 @@
 			</plugins>
 		  </build>
 	    </profile>
-		
-		
+
+
 		<!-- Construccion para despliegue en el repositorio de la SGAE -->
 		<profile>
 			<id>minhap</id>
@@ -149,7 +149,7 @@
 			</distributionManagement>
       		<build>
        			<plugins>
-	
+
 					<plugin>
 						<artifactId>maven-compiler-plugin</artifactId>
 						<version>3.6.2</version>
@@ -162,8 +162,8 @@
 			</plugins>
 		  </build>
 	    </profile>
-		
-		
+
+
 		<!-- Construccion para despliegue en el repositorio de artefactos -->
 		<profile>
 			<id>env-deploy</id>
@@ -173,38 +173,41 @@
 				  <value>deploy</value>
 				</property>
 			</activation>
-		  
+
 			<build>
 				<plugins>
-				
+
 					<plugin>
-					  <groupId>org.apache.maven.plugins</groupId>
-					  <artifactId>maven-source-plugin</artifactId>
-					  <version>2.2.1</version>
-					  <executions>
-						<execution>
-						  <id>attach-sources</id>
-						  <goals>
-							<goal>jar-no-fork</goal>
-						  </goals>
-						</execution>
-					  </executions>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>2.2.1</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
 					</plugin>
-					
+
 					<plugin>
-					  <groupId>org.apache.maven.plugins</groupId>
-					  <artifactId>maven-javadoc-plugin</artifactId>
-					  <version>2.9.1</version>
-					  <executions>
-						<execution>
-						  <id>attach-javadocs</id>
-						  <goals>
-							<goal>jar</goal>
-						  </goals>
-						</execution>
-					  </executions>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.9.1</version>
+						<configuration>
+							<failOnError>false</failOnError>
+						</configuration>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
 					</plugin>
-					
+
 					<plugin>
 						<artifactId>maven-compiler-plugin</artifactId>
 						<version>3.6.2</version>
@@ -213,7 +216,7 @@
 							<target>1.7</target>
 						</configuration>
 					</plugin>
-					
+
 				</plugins>
 			</build>
 		</profile>
