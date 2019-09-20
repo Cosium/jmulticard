@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>es.gob.afirma.jmulticard</groupId>
 		<artifactId>jmulticard-base</artifactId>
-		<version>1.5.4.cosium</version>
+		<version>1.5.5.cosium-SNAPSHOT</version>
 	</parent>
 	
 	<dependencies>
