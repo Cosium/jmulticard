@@ -47,7 +47,7 @@ import es.gob.jmulticard.asn1.der.Record;
 
 /** Objeto PKCS#15 CDF (<i>Certificate Description File</i>) ASN&#46;1 (<i>EF.CD</i> en ISO 7816-15).
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
-public final class Cdf extends Record implements Pkcs15Cdf {
+public class Cdf extends Record implements Pkcs15Cdf {
 
     private static final int BUFFER_SIZE = 150;
 
