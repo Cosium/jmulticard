@@ -46,7 +46,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -55,23 +54,25 @@ import javax.security.auth.callback.UnsupportedCallbackException;
 
 import es.gob.jmulticard.CryptoHelper;
 import es.gob.jmulticard.HexUtils;
+import es.gob.jmulticard.JmcLogger;
 import es.gob.jmulticard.apdu.CommandApdu;
 import es.gob.jmulticard.apdu.ResponseApdu;
 import es.gob.jmulticard.apdu.StatusWord;
+import es.gob.jmulticard.apdu.ceres.CeresLoadDataApduCommand;
+import es.gob.jmulticard.apdu.ceres.CeresSignDataApduCommand;
 import es.gob.jmulticard.apdu.ceres.CeresVerifyApduCommand;
-import es.gob.jmulticard.apdu.ceres.LoadDataApduCommand;
-import es.gob.jmulticard.apdu.ceres.SignDataApduCommand;
-import es.gob.jmulticard.apdu.connection.ApduConnection;
-import es.gob.jmulticard.apdu.connection.ApduConnectionException;
 import es.gob.jmulticard.apdu.dnie.RetriesLeftApduCommand;
 import es.gob.jmulticard.apdu.iso7816eight.EnvelopeDataApduCommand;
 import es.gob.jmulticard.asn1.Asn1Exception;
 import es.gob.jmulticard.asn1.TlvException;
+import es.gob.jmulticard.asn1.custom.fnmt.ceres.CeresCdf;
+import es.gob.jmulticard.asn1.custom.fnmt.ceres.CeresPrKdf;
 import es.gob.jmulticard.asn1.der.pkcs1.DigestInfo;
 import es.gob.jmulticard.asn1.der.pkcs15.Cdf;
 import es.gob.jmulticard.asn1.der.pkcs15.Pkcs15Cdf;
 import es.gob.jmulticard.asn1.der.pkcs15.Pkcs15PrKdf;
 import es.gob.jmulticard.asn1.der.pkcs15.PrKdf;
+import es.gob.jmulticard.callback.CardWithRetriesPasswordCallback;
 import es.gob.jmulticard.card.Atr;
 import es.gob.jmulticard.card.AuthenticationModeLockedException;
 import es.gob.jmulticard.card.BadPinException;
@@ -81,19 +82,19 @@ import es.gob.jmulticard.card.CryptoCard;
 import es.gob.jmulticard.card.CryptoCardException;
 import es.gob.jmulticard.card.InvalidCardException;
 import es.gob.jmulticard.card.Location;
+import es.gob.jmulticard.card.PasswordCallbackNotFoundException;
 import es.gob.jmulticard.card.PinException;
 import es.gob.jmulticard.card.PrivateKeyReference;
-import es.gob.jmulticard.card.fnmt.ceres.asn1.CeresCdf;
-import es.gob.jmulticard.card.fnmt.ceres.asn1.CeresPrKdf;
-import es.gob.jmulticard.card.iso7816eight.Iso7816EightCard;
-import es.gob.jmulticard.card.iso7816four.FileNotFoundException;
+import es.gob.jmulticard.card.iso7816eight.AbstractIso7816EightCard;
 import es.gob.jmulticard.card.iso7816four.Iso7816FourCardException;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.connection.ApduConnectionException;
 
 /** Tarjeta FNMT-RCM CERES.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
-public final class Ceres extends Iso7816EightCard implements CryptoCard {
+public final class Ceres extends AbstractIso7816EightCard implements CryptoCard {
 
-	private static final byte[] ATR_MASK_TC = new byte[] {
+	private static final byte[] ATR_MASK_TC = {
 		(byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
@@ -102,7 +103,7 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         (byte) 0x54, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x90, (byte) 0x00
     }, ATR_MASK_TC);
 
-	private static final byte[] ATR_MASK_ST = new byte[] {
+	private static final byte[] ATR_MASK_ST = {
 		(byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
@@ -111,7 +112,7 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         (byte) 0x45, (byte) 0x53, (byte) 0x02, (byte) 0x2c, (byte) 0x34, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x90, (byte) 0x00
     }, ATR_MASK_ST);
 
-	private static final byte[] ATR_MASK_SLE_FN20 = new byte[] {
+	private static final byte[] ATR_MASK_SLE_FN20 = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
@@ -120,7 +121,7 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         (byte) 0x52, (byte) 0x45, (byte) 0x53, (byte) 0x57, (byte) 0x05, (byte) 0x60, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x90, (byte) 0x00
     }, ATR_MASK_SLE_FN20);
 
-	private static final byte[] ATR_MASK_SLE_FN19 = new byte[] {
+	private static final byte[] ATR_MASK_SLE_FN19 = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
@@ -131,25 +132,23 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 
 	private static final byte CLA = (byte) 0x00;
 
-	private static final Logger LOGGER = Logger.getLogger("es.gob.jmulticard"); //$NON-NLS-1$
-
 	private final CryptoHelper cryptoHelper;
 
     private static final Location CDF_LOCATION = new Location("50156004"); //$NON-NLS-1$
     private static final Location PRKDF_LOCATION = new Location("50156001"); //$NON-NLS-1$
+
+    private static final int MAX_APDU_SIZE = 255;
 
     /** Nombre del Fichero Maestro. */
     private static final String MASTER_FILE_NAME = "Master.File"; //$NON-NLS-1$
 
     /** Octeto que identifica una verificaci&oacute;n fallida del
      * PIN por PIN de longitud incorrecta. */
-    private final static byte ERROR_PIN_SW1 = (byte) 0x67;
+    private static final byte ERROR_PIN_SW1 = (byte) 0x67;
 
     /** Octeto que identifica una verificaci&oacute;n fallida del
      * PIN por PIN incorrecto. */
-    private final static byte ERROR_PIN_SW2 = (byte) 0x63;
-
-	private static final boolean AUTO_RETRY = true;
+    private static final byte ERROR_PIN_SW2 = (byte) 0x63;
 
     /** Certificados de la tarjeta indexados por su alias. */
     private Map<String, X509Certificate> certs;
@@ -228,14 +227,13 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 		}
 		catch (final Exception e) {
 			throw new ApduConnectionException(
-				"Error cargando las estructuras iniciales de la tarjeta: " + e, e //$NON-NLS-1$
+				"Error cargando las estructuras iniciales de la tarjeta", e //$NON-NLS-1$
 			);
 		}
 		this.cryptoHelper = ch;
 	}
 
-	private void preload() throws ApduConnectionException,
-	                              Iso7816FourCardException,
+	private void preload() throws Iso7816FourCardException,
 	                              IOException,
 	                              CertificateException,
 	                              Asn1Exception,
@@ -255,6 +253,11 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         catch(final Exception e) {
         	// Si ha fallado la inicializacion del CDF tipo CERES probamos con el CDF generico PKCS#15,
         	// presente en las nuevas tarjetas FNMT-CERES
+        	JmcLogger.info(
+    			Ceres.class.getName(),
+    			"preload", //$NON-NLS-1$
+    			"El CDF no es de tipo FNMT, se intenta en modo PKCS#15: " + e //$NON-NLS-1$
+			);
         	cdf = new Cdf();
         	cdf.setDerValue(cdfBytes);
         }
@@ -270,20 +273,15 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 			);
         	X509Certificate cert;
         	try {
-        		cert = CompressionUtils.getCertificateFromCompressedOrNotData(
-        				selectFileByLocationAndRead(l)
-        				);
+        		cert = CompressionUtils.getCertificateFromCompressedOrNotData(selectFileByLocationAndRead(l), this.cryptoHelper);
         	}
         	catch (final IOException e) {
-        		LOGGER.warning("No se ha encontrado un certificado referenciado, se pasa al siguiente: " + e); //$NON-NLS-1$
+        		JmcLogger.warning("No se ha encontrado un certificado referenciado, se pasa al siguiente: " + e); //$NON-NLS-1$
            		continue;
         	}
 
         	final String alias = i + " " + cert.getSerialNumber(); //$NON-NLS-1$
-        	this.aliasByCertAndKeyId.put(
-    			HexUtils.hexify(cdf.getCertificateId(i), false),
-    			alias
-			);
+        	this.aliasByCertAndKeyId.put(HexUtils.hexify(cdf.getCertificateId(i), false), alias);
         	this.certs.put(alias, cert);
         }
 
@@ -291,27 +289,27 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         final byte[] prkdfValue =  selectFileByLocationAndRead(PRKDF_LOCATION);
 
         // Establecemos el valor del PrKDF
-        Pkcs15PrKdf prkdf = new CeresPrKdf();
+        Pkcs15PrKdf prkdf = new PrKdf();
         try {
         	prkdf.setDerValue(prkdfValue);
         }
         catch(final Exception e) {
-        	// Si no carga el estructura PrKDF especifica de CERES probamos con la
-        	// generica PKCS#15, presente en las ultimas versiones de la tarjeta
-        	prkdf = new PrKdf();
+        	// Si no carga el estructura PrKDF probamos con la generica PKCS#15
+        	// especifica de CERES, presente en las versiones antiguas de la tarjeta
+        	JmcLogger.info(
+    			Ceres.class.getName(),
+    			"preload", //$NON-NLS-1$
+    			"El PrKDF no es de tipo PKCS#15, se intenta en modo FNMT: " + e //$NON-NLS-1$
+			);
+        	prkdf = new CeresPrKdf();
         	prkdf.setDerValue(prkdfValue);
         }
 
         this.keys = new LinkedHashMap<>();
         for (int i=0; i<prkdf.getKeyCount(); i++) {
-        	final String alias = this.aliasByCertAndKeyId.get(
-    			HexUtils.hexify(prkdf.getKeyId(i), false)
-			);
+        	final String alias = this.aliasByCertAndKeyId.get(HexUtils.hexify(prkdf.getKeyId(i), false));
         	if (alias != null) {
-	        	this.keys.put(
-	    			alias,
-					Byte.valueOf(prkdf.getKeyReference(i))
-				);
+	        	this.keys.put(alias, Byte.valueOf(prkdf.getKeyReference(i)));
         	}
         }
 
@@ -326,9 +324,7 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 			aliases = getAliases();
 		}
 		catch (final Exception e) {
-			throw new IllegalStateException(
-				"No se han podido leer los alias de los certificados de la tarjeta CERES: " + e, e //$NON-NLS-1$
-			);
+			throw new IllegalStateException("No se han podido leer los alias de los certificados de la tarjeta CERES", e); //$NON-NLS-1$
 		}
 		for (final String alias : aliases) {
 			if (this.keys.get(alias) == null) {
@@ -380,7 +376,7 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 				this.authenticated = true;
 			}
 			catch (final ApduConnectionException e1) {
-				throw new CryptoCardException("Error en la verificacion de PIN: " + e1, e1); //$NON-NLS-1$
+				throw new CryptoCardException("Error en la verificacion de PIN", e1); //$NON-NLS-1$
 			}
 		}
 
@@ -389,24 +385,22 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 			digestInfo = DigestInfo.encode(algorithm, data, this.cryptoHelper);
 		}
 		catch(final Exception e) {
-			throw new CryptoCardException(
-				"Error creando el DigestInfo para la firma con el algoritmo " + algorithm + ": " + e, e //$NON-NLS-1$ //$NON-NLS-2$
-			);
+			throw new CryptoCardException("Error creando el DigestInfo para la firma con el algoritmo " + algorithm, e); //$NON-NLS-1$
 		}
 
 		loadData(ceresPrivateKey.getKeyBitSize(), digestInfo);
 
 		final ResponseApdu res;
 
-		final CommandApdu cmd = new SignDataApduCommand(
+		final CommandApdu cmd = new CeresSignDataApduCommand(
 			ceresPrivateKey.getKeyReference(), // Referencia
 			ceresPrivateKey.getKeyBitSize()    // Tamano en bits de la clave
 		);
 		try {
 			res = sendArbitraryApdu(cmd);
 		}
-		catch (final Exception e) {
-			throw new CryptoCardException("Error firmando los datos: " + e, e); //$NON-NLS-1$
+		catch (final ApduConnectionException e) {
+			throw new CryptoCardException("Error firmando los datos", e); //$NON-NLS-1$
 		}
 		if (!res.isOk()) {
 			throw new CryptoCardException(
@@ -419,28 +413,21 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 	private void loadData(final int keyBitSize, final byte[] digestInfo) throws CryptoCardException {
 		final byte[] paddedData;
 		try {
-			paddedData = CryptoHelper.addPkcs1PaddingForPrivateKeyOperation(
-				digestInfo,
-				keyBitSize
-			);
+			paddedData = CryptoHelper.addPkcs1PaddingForPrivateKeyOperation(digestInfo, keyBitSize);
 		}
-		catch (final Exception e1) {
-			throw new CryptoCardException(
-				"Error realizando el relleno PKCS#1 de los datos a firmar: " + e1, e1 //$NON-NLS-1$
-			);
+		catch (final IOException e1) {
+			throw new CryptoCardException("Error realizando el relleno PKCS#1 de los datos a firmar", e1); //$NON-NLS-1$
 		}
 
 		ResponseApdu res;
 
 		// Si la clave es de 1024 la carga se puede hacer en una unica APDU
-		if (keyBitSize < 2048) {
+		if (keyBitSize <= 1024) {
 			try {
-				res = sendArbitraryApdu(new LoadDataApduCommand(paddedData));
+				res = sendArbitraryApdu(new CeresLoadDataApduCommand(paddedData));
 			}
-			catch (final Exception e) {
-				throw new CryptoCardException(
-					"Error enviando los datos a firmar a la tarjeta: " + e, e //$NON-NLS-1$
-				);
+			catch (final ApduConnectionException e) {
+				throw new CryptoCardException("Error enviando los datos a firmar a la tarjeta", e); //$NON-NLS-1$
 			}
 			if (!res.isOk()) {
 				throw new CryptoCardException(
@@ -448,24 +435,27 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 				);
 			}
 		}
-		// Pero si es de 2048 hacen falta dos APDU, envolviendo la APDU de carga de datos
+		// Pero si es de 2048 hacen falta mas de una APDU, haciendo envoltura de la APDU de carga de datos
+		//TODO: La envoltura de APDUs se hace ya en la capa de transporte, quitar de aqui
 		else if (keyBitSize == 2048) {
 
-			final byte[] envelopedLoadDataApdu = new byte[] {
+			//TODO: Poner esto en un bucle. Separar de forma fija en dos APDU solo vale para claves de 2048, pero no de 4196 o superiores
+
+			final byte[] envelopedLoadDataApdu = {
 				(byte) 0x90, (byte) 0x58, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00
 			};
 
-			// La primera APDU carga 0xFF octetos (254)
-			byte[] data = new byte[255];
+			// La primera APDU carga MAX_APDU_SIZE octetos
+			byte[] data = new byte[MAX_APDU_SIZE];
 			System.arraycopy(envelopedLoadDataApdu, 0, data, 0, envelopedLoadDataApdu.length);
-			System.arraycopy(paddedData, 0, data, envelopedLoadDataApdu.length, 255 - envelopedLoadDataApdu.length);
+			System.arraycopy(paddedData, 0, data, envelopedLoadDataApdu.length, MAX_APDU_SIZE - envelopedLoadDataApdu.length);
 
 			try {
 				res = sendArbitraryApdu(new EnvelopeDataApduCommand(data));
 			}
 			catch (final Exception e) {
 				throw new CryptoCardException(
-					"Error en el primer envio a la tarjeta de los datos a firmar: " + e, e //$NON-NLS-1$
+					"Error en el primer envio a la tarjeta de los datos a firmar", e //$NON-NLS-1$
 				);
 			}
 			if (!res.isOk()) {
@@ -474,16 +464,16 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 				);
 			}
 
-			// La segunda APDU es de 0x08 octetos (8)
+			// La segunda APDU es de 0x08 octetos (8) //TODO: Es de 8 octetos solo si MAX_APDU_SIZE es 0xFF y la clave es de 2048!!!!
 			data = new byte[8];
-			System.arraycopy(paddedData, 255 - envelopedLoadDataApdu.length, data, 0, 8);
+			System.arraycopy(paddedData, MAX_APDU_SIZE - envelopedLoadDataApdu.length, data, 0, 8);
 
 			try {
 				res = sendArbitraryApdu(new EnvelopeDataApduCommand(data));
 			}
-			catch (final Exception e) {
+			catch (final ApduConnectionException e) {
 				throw new CryptoCardException(
-					"Error en el segundo envio a la tarjeta de los datos a firmar: " + e, e //$NON-NLS-1$
+					"Error en el segundo envio a la tarjeta de los datos a firmar", e //$NON-NLS-1$
 				);
 			}
 			if (!res.isOk()) {
@@ -491,26 +481,25 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 					"No se han podido enviar (segunda tanda) los datos a firmar a la tarjeta. Respuesta: " + HexUtils.hexify(res.getBytes(), true) //$NON-NLS-1$
 				);
 			}
-
 		}
-
 		else {
-			throw new IllegalArgumentException("Solo se soportan claves de 2048 o menos bits"); //$NON-NLS-1$
+			//TODO: Soportar claves de cualquier tamano
+			throw new IllegalArgumentException("Solo se soportan claves de 2048 o 1024 bits"); //$NON-NLS-1$
 		}
-
 	}
 
 	@Override
 	protected void selectMasterFile() throws ApduConnectionException,
-	                                         FileNotFoundException,
 	                                         Iso7816FourCardException {
 		selectFileByName(MASTER_FILE_NAME);
 	}
 
 	@Override
-	public void verifyPin(final PasswordCallback pinPc) throws ApduConnectionException, PinException {
+	public void verifyPin(final PasswordCallback pinPc) throws ApduConnectionException,
+	                                                           PinException,
+	                                                           PasswordCallbackNotFoundException {
 		if (pinPc == null) {
-			throw new PinException("No se ha establecido un PasswordCallback"); //$NON-NLS-1$
+			throw new PasswordCallbackNotFoundException("No se ha establecido un PasswordCallback"); //$NON-NLS-1$
 		}
 		final CommandApdu chv = new CeresVerifyApduCommand(CLA, pinPc);
 		final ResponseApdu verifyResponse = sendArbitraryApdu(chv);
@@ -519,16 +508,9 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         		verifyResponse.getStatusWord().getMsb() == ERROR_PIN_SW1 ||
         		verifyResponse.getStatusWord().getMsb() == ERROR_PIN_SW2
     		) {
-            	if(AUTO_RETRY) {
-            		this.passwordCallback = null;
-            		verifyPin(
-                		getInternalPasswordCallback()
-                	);
-            		return;
-            	}
 				throw new BadPinException(verifyResponse.getStatusWord().getLsb() - (byte) 0xC0);
             }
-            else if (new StatusWord((byte)0x69, (byte)0x83).equals(verifyResponse.getStatusWord())) {
+			if (new StatusWord((byte)0x69, (byte)0x83).equals(verifyResponse.getStatusWord())) {
             	throw new AuthenticationModeLockedException();
             }
             throw new ApduConnectionException(
@@ -540,6 +522,9 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         }
 	}
 
+	/** Obtiene la <code>PasswordCallback</code> predefinida.
+	 * @return <code>PasswordCallback</code> predefinida.
+	 * @throws PinException Si no se puede obtener el PIN del <code>CallbackHandler</code>. */
     protected PasswordCallback getInternalPasswordCallback() throws PinException {
     	if (this.passwordCallback != null) {
     		final int retriesLeft = getPinRetriesLeft();
@@ -553,26 +538,22 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
         	if(retriesLeft == 0) {
         		throw new AuthenticationModeLockedException();
         	}
-        	final PasswordCallback pwc = new PasswordCallback(
-    			CardMessages.getString("Gen.0", Integer.toString(retriesLeft)), //$NON-NLS-1$
-				false
-			);
+        	
+        	final CardWithRetriesPasswordCallback  pwc = new CardWithRetriesPasswordCallback(
+        			CardMessages.getString("Gen.0", Integer.toString(retriesLeft)), //$NON-NLS-1$
+    				false
+    			);
+    		
+    		pwc.setRetriesLeft(retriesLeft);
+    		
 			try {
-				this.callbackHandler.handle(
-					new Callback[] {
-						pwc
-					}
-				);
+				this.callbackHandler.handle(new Callback[] { pwc });
 			}
 			catch (final IOException e) {
-				throw new PinException(
-					"Error obteniendo el PIN del CallbackHandler: " + e, e //$NON-NLS-1$
-				);
+				throw new PinException("Error obteniendo el PIN del CallbackHandler", e); //$NON-NLS-1$
 			}
 			catch (final UnsupportedCallbackException e) {
-				throw new PinException(
-					"El CallbackHandler no soporta pedir el PIN al usuario: " + e, e //$NON-NLS-1$
-				);
+				throw new PinException("El CallbackHandler no soporta pedir el PIN al usuario", e); //$NON-NLS-1$
 			}
 			return pwc;
     	}
@@ -583,14 +564,10 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
     	final CommandApdu verifyCommandApdu = new RetriesLeftApduCommand();
     	final ResponseApdu verifyResponse;
 		try {
-			verifyResponse = getConnection().transmit(
-				verifyCommandApdu
-			);
+			verifyResponse = getConnection().transmit(verifyCommandApdu);
 		}
 		catch (final ApduConnectionException e) {
-			throw new PinException(
-				"Error obteniendo el PIN del CallbackHandler: " + e, e  //$NON-NLS-1$
-			);
+			throw new PinException("Error obteniendo el PIN del CallbackHandler", e);  //$NON-NLS-1$
 		}
     	return verifyResponse.getStatusWord().getLsb() - (byte) 0xC0;
     }
@@ -611,5 +588,4 @@ public final class Ceres extends Iso7816EightCard implements CryptoCard {
 	public void setCallbackHandler(final CallbackHandler callh) {
 		this.callbackHandler = callh;
 	}
-
 }

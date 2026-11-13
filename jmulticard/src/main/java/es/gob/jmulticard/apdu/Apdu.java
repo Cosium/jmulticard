@@ -40,6 +40,7 @@
 package es.gob.jmulticard.apdu;
 
 import es.gob.jmulticard.HexUtils;
+import es.gob.jmulticard.JmcLogger;
 
 /** <i>Application Programming Data Unit</i> (APDU) para comunicaci&oacute;n con
  * tarjeta inteligente.
@@ -47,27 +48,49 @@ import es.gob.jmulticard.HexUtils;
  * @author Alberto Mart&iacute;nez. */
 public class Apdu {
 
+	/** Codificaci&oacute;n binaria de la APDU. */
     private byte[] apduBytes = null;
 
     /** Obtiene los octetos que conforman la APDU.
      * @return Array de octetos que conforman la APDU. */
     public byte[] getBytes() {
-        final byte[] response = new byte[this.apduBytes.length];
-        System.arraycopy(this.apduBytes, 0, response, 0, this.apduBytes.length);
+    	if (apduBytes == null) {
+    		JmcLogger.warning(
+				"Se han pedido los octetos de una APDU de cuerpo nulo, se devolvera null" //$NON-NLS-1$
+			);
+    		return null;
+    	}
+        final byte[] response = new byte[apduBytes.length];
+        System.arraycopy(apduBytes, 0, response, 0, apduBytes.length);
         return response;
     }
 
+    /** Establece los octetos que conforman la APDU.
+     * @param apdu Array de octetos que conforman la APDU. */
     protected void setBytes(final byte[] apdu) {
-        this.apduBytes = new byte[apdu.length];
-        System.arraycopy(apdu, 0, this.apduBytes, 0, apdu.length);
+    	if (apdu == null) {
+    		JmcLogger.warning("Se ha pedido crear una APDU con el cuerpo nulo"); //$NON-NLS-1$
+    		apduBytes = null;
+    	}
+    	else {
+    		if (apdu.length == 0) {
+    			JmcLogger.warning("Se ha pedido crear una APDU con el cuerpo vacio"); //$NON-NLS-1$
+    		}
+    		else if (apdu.length < 1) {
+    			JmcLogger.warning("Se ha pedido crear una APDU con cuerpo de tamano inferior a dos octetos"); //$NON-NLS-1$
+    		}
+	        apduBytes = new byte[apdu.length];
+	        System.arraycopy(apdu, 0, apduBytes, 0, apdu.length);
+    	}
     }
 
     @Override
 	public String toString() {
-    	return HexUtils.hexify(getBytes(), true);
+    	return HexUtils.hexify(getBytes(), getBytes().length > 32);
     }
 
+    /** Constructor. */
     protected Apdu() {
-        /* Ocultamos el constructor para evitar que se puedan crear objetos */
+        // Ocultamos el constructor para evitar que se puedan crear objetos
     }
 }

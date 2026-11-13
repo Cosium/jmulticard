@@ -42,25 +42,33 @@ package es.gob.jmulticard.card;
 import java.io.IOException;
 
 /** Excepci&oacute;n gen&eacute;rica relacionada con una tarjeta.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public abstract class CardException extends IOException {
 
+	/** Identificador de versi&oacute;n para la serializaci&oacute;n. */
     private static final long serialVersionUID = -3054749595177932903L;
 
+    /** Construye una excepci&oacute;n gen&eacute;rica relacionada con una tarjeta.
+     * @param description Descripci&oacute;n de la excepci&oacute;n. */
     protected CardException(final String description) {
         super(description);
     }
 
+    /** Construye una excepci&oacute;n gen&eacute;rica relacionada con una tarjeta. */
     protected CardException() {
-        super();
+    	// Vacio en la clase abstracta
     }
 
+    /** Construye una excepci&oacute;n gen&eacute;rica relacionada con una tarjeta.
+     * @param description Descripci&oacute;n de la excepci&oacute;n.
+     * @param cause Causa original de la excepci&oacute;n. */
     protected CardException(final String description, final Throwable cause) {
-        super(description + ": " + cause.getMessage(), cause); //$NON-NLS-1$
+        super(description, cause);
     }
 
-	protected CardException(final Throwable e) {
-		super(e);
+    /** Construye una excepci&oacute;n gen&eacute;rica relacionada con una tarjeta.
+     * @param cause Causa original de la excepci&oacute;n. */
+	protected CardException(final Throwable cause) {
+		super(cause);
 	}
-
 }

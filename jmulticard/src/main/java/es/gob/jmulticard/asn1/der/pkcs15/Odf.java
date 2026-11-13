@@ -35,19 +35,17 @@ import es.gob.jmulticard.asn1.der.Record;
  *   direct-protected   [2] EnvelopedData   {SEQUENCE OF ObjectType},
  * }
  * </pre>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class Odf extends Record {
 
 	/** Construye un objeto PKCS#15 ODF (<i>Object Description File</i>) ASN&#46;1. */
 	public Odf() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(PrivateKeysContextSpecific.class, true),       // PrKDF
-				new OptionalDecoderObjectElement(PublicKeysContextSpecific.class, true),
-				new OptionalDecoderObjectElement(TrustedPublicKeysContextSpecific.class, true),
-				new OptionalDecoderObjectElement(SecretKeysContextSpecific.class, true),
-				new OptionalDecoderObjectElement(CertificatesContextSpecific.class, true)       // CDF
-			}
+			new OptionalDecoderObjectElement(PrivateKeysContextSpecific.class, true),       // PrKDF
+			new OptionalDecoderObjectElement(PublicKeysContextSpecific.class, true),
+			new OptionalDecoderObjectElement(TrustedPublicKeysContextSpecific.class, true),
+			new OptionalDecoderObjectElement(SecretKeysContextSpecific.class, true),
+			new OptionalDecoderObjectElement(CertificatesContextSpecific.class, true)       // CDF
 		);
 	}
 
@@ -94,10 +92,9 @@ public final class Odf extends Record {
 	public String toString() {
 		return
 			"ODF: \n" + //$NON-NLS-1$
-			" Ruta hacia el CDF: " + getCdfPath() + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
-			" Ruta hacia el PrKDF: " + getPrKdfPath() + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
-			" Ruta hacia el PuKDF: " + getPuKdfPath() //$NON-NLS-1$
+				" Ruta hacia el CDF: " + getCdfPath() + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+				" Ruta hacia el PrKDF: " + getPrKdfPath() + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+				" Ruta hacia el PuKDF: " + getPuKdfPath() //$NON-NLS-1$
 		;
 	}
-
 }

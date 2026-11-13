@@ -39,14 +39,15 @@
  */
 package es.gob.jmulticard.asn1.der;
 
-import java.util.Vector;
+import java.util.LinkedList;
 
 import es.gob.jmulticard.asn1.Asn1Exception;
 import es.gob.jmulticard.asn1.DecoderObject;
 import es.gob.jmulticard.asn1.Tlv;
 import es.gob.jmulticard.asn1.TlvException;
 
-/** Tipo ASN&#46;1 <i>SequenceOf</i>. */
+/** Tipo ASN&#46;1 <i>SequenceOf</i>.
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public abstract class SequenceOf extends DecoderObject {
 
 	/** Tipo ASN&#46;1 <i>SequenceOf</i>. */
@@ -54,34 +55,33 @@ public abstract class SequenceOf extends DecoderObject {
 
     private final Class<? extends DecoderObject> elementsType;
 
-    private Vector<DecoderObject> sequenceObjects = null;
+    private LinkedList<DecoderObject> sequenceObjects = null;
 
 	@Override
-    protected void decodeValue() throws Asn1Exception, TlvException {
-		Tlv tlv = new Tlv(getRawDerValue());
+    protected final void decodeValue() throws Asn1Exception, TlvException {
+		Tlv tlv = new Tlv(getBytes());
 		checkTag(tlv.getTag());
 		int offset = 0;
 		byte[] remainingBytes;
         DecoderObject tmpDo;
         final byte[] valueBytes = tlv.getValue();
-        this.sequenceObjects = new Vector<>();
+        sequenceObjects = new LinkedList<>();
         while (offset < valueBytes.length) {
         	remainingBytes = new byte[valueBytes.length - offset];
         	System.arraycopy(valueBytes, offset, remainingBytes, 0, remainingBytes.length);
     		tlv = new Tlv(remainingBytes);
         	try {
-        		tmpDo = this.elementsType.getConstructor().newInstance();
+        		tmpDo = elementsType.getConstructor().newInstance();
         	}
         	catch (final Exception e) {
         		throw new Asn1Exception(
-    				"No se ha podido instanciar un " + this.elementsType.getName() + //$NON-NLS-1$
-    				" en la secuencia: " + e, e  //$NON-NLS-1$
+    				"No se ha podido instanciar un " + elementsType.getName() + " en la secuencia", e  //$NON-NLS-1$ //$NON-NLS-2$
         		);
         	}
         	offset = offset + tlv.getBytes().length;
         	tmpDo.checkTag(tlv.getTag());
         	tmpDo.setDerValue(tlv.getBytes());
-        	this.sequenceObjects.add(tmpDo);
+        	sequenceObjects.add(tmpDo);
         }
 	}
 
@@ -89,16 +89,14 @@ public abstract class SequenceOf extends DecoderObject {
      * Un <i>SequenceOf</i> contiene una secuencia de tipos ASN&#46;1 (que deben ser iguales).
      * @param type Tipos (etiquetas) de objetos ASN&#46;1 (1 a n elementos) que va a contener la secuencia. El orden es irrelevante. */
 	protected SequenceOf(final Class<? extends DecoderObject> type) {
-	    super();
-		if (type == null) {
+	    if (type == null) {
 			throw new IllegalArgumentException();
 		}
-		this.elementsType = type;
+		elementsType = type;
 	}
 
-    /** {@inheritDoc} */
     @Override
-    protected byte getDefaultTag() {
+    protected final byte getDefaultTag() {
         return TAG_SEQUENCE;
     }
 
@@ -106,12 +104,13 @@ public abstract class SequenceOf extends DecoderObject {
      * @param index Posici&oacute;n del elemento a recuperar.
      * @return Un objeto de tipo <code>DecoderObject</code> que contiene el TLV deseado.
      * @throws IndexOutOfBoundsException Si el indice indicado no pertenece al rango de la secuencia. */
-    protected DecoderObject getElementAt(final int index) {
-        return this.sequenceObjects.elementAt(index);
+    protected final DecoderObject getElementAt(final int index) {
+        return sequenceObjects.get(index);
     }
 
-    protected int getElementCount() {
-    	return this.sequenceObjects.size();
+    /** Obtiene el n&uacute;mero de elementos que contiene la secuencia.
+     * @return N&uacute;mero de elementos que contiene la secuencia. */
+    protected final int getElementCount() {
+    	return sequenceObjects.size();
     }
-
 }

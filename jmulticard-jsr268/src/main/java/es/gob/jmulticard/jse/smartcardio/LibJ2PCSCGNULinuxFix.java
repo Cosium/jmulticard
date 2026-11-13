@@ -1,6 +1,7 @@
 package es.gob.jmulticard.jse.smartcardio;
 
 import java.io.File;
+import java.util.logging.Logger;
 
 /** Encapsulate fixes regarding the dynamic loading of the pcsclite library on
  * GNU/Linux Systems. Statically call LibJ2PCSCGNULinuxFix.fixNativeLibrary()
@@ -101,12 +102,18 @@ final class LibJ2PCSCGNULinuxFix {
 				if (jvmBinaryArch == null) {
 					return libraryPath;
 				}
-				if (jvmBinaryArch.equals(JRE_BITNESS_32_VALUE)) {
+				if (JRE_BITNESS_32_VALUE.equals(jvmBinaryArch)) {
 					return addMultiarchPath(libraryPath, UBUNTU_MULTILIB_32_SUFFIX);
 				}
-				if (jvmBinaryArch.equals(JRE_BITNESS_64_VALUE)) {
+				if (JRE_BITNESS_64_VALUE.equals(jvmBinaryArch)) {
 					return addMultiarchPath(libraryPath, UBUNTU_MULTILIB_64_SUFFIX);
 				}
+				break;
+
+			default:
+				Logger.getLogger(LibJ2PCSCGNULinuxFix.class.getName()).warning(
+					"No se ha podido determinar la arquitectura de Ubuntu, no se aplicaran correcciones de directorio de biliotecas" //$NON-NLS-1$
+				);
 				break;
 		}
 

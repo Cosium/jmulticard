@@ -2,13 +2,16 @@ package es.gob.jmulticard.card.dnie;
 
 import java.security.cert.X509Certificate;
 import java.util.Locale;
-import java.util.logging.Logger;
+
+import es.gob.jmulticard.JmcLogger;
 
 /** Utilidad para el an&aacute;lisis de los campos personales del certificado DNIe.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class DnieCertParseUtil {
 
-	private static final Logger LOGGER = Logger.getLogger("es.gob.afirma"); //$NON-NLS-1$
+	/* TODO: Soportar fecha de nacimiento, lugar de nacimiento y sexo desde el "Subject Directory Attributes":
+	    id-ce-subjectDirectoryAttributes OBJECT IDENTIFIER ::=  { id-ce 9 }
+	    SubjectDirectoryAttributes ::= SEQUENCE SIZE (1..MAX) OF Attribute   */
 
 	private final String name;
 	private String sn1;
@@ -19,77 +22,65 @@ public final class DnieCertParseUtil {
 	 * @param c Certificado de DNIe. */
 	public DnieCertParseUtil(final X509Certificate c) {
 		if (c == null) {
-			throw new IllegalArgumentException(
-				"El certificado no puede ser nulo" //$NON-NLS-1$
-			);
+			throw new IllegalArgumentException("El certificado no puede ser nulo"); //$NON-NLS-1$
 		}
-		final String dn = c.getSubjectDN().toString();
+		final String dn = c.getSubjectX500Principal().toString();
 		String cn = getCN(dn);
 		if (cn.contains("(")) { //$NON-NLS-1$
-			cn = cn.substring(
-				0,
-				cn.indexOf('(')
-			).trim();
+			cn = cn.substring(0, cn.indexOf('(')).trim();
 		}
-		this.name = cn.substring(
-			cn.indexOf(',') + 1,
-			cn.length()
-		).trim();
-		this.sn1 = getRDNvalueFromLdapName("SN", dn); //$NON-NLS-1$
-		if (this.sn1 == null) {
-			this.sn1 = getRDNvalueFromLdapName("SURNAME", dn); //$NON-NLS-1$
+		name = cn.substring(cn.indexOf(',') + 1).trim();
+		sn1 = getRdnValueFromLdapName("SN", dn); //$NON-NLS-1$
+		if (sn1 == null) {
+			sn1 = getRdnValueFromLdapName("SURNAME", dn); //$NON-NLS-1$
 		}
-		if (this.sn1 == null) {
+		if (sn1 == null) {
 			// Forma del DN en Android
-            this.sn1 = getRDNvalueFromLdapName("OID.2.5.4.4", dn); //$NON-NLS-1$
+            sn1 = getRdnValueFromLdapName("OID.2.5.4.4", dn); //$NON-NLS-1$
         }
-        if (this.sn1 == null) {
-            this.sn1 = getRDNvalueFromLdapName("2.5.4.4", dn); //$NON-NLS-1$
+        if (sn1 == null) {
+            sn1 = getRdnValueFromLdapName("2.5.4.4", dn); //$NON-NLS-1$
         }
-		this.sn2 = cn.replace(",", "").replace(this.name, "").replace(this.sn1, "").trim(); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-		this.num = getRDNvalueFromLdapName("SERIALNUMBER", dn); //$NON-NLS-1$
+		sn2 = cn.replace(",", "").replace(name, "").replace(sn1, "").trim(); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		num = getRdnValueFromLdapName("SERIALNUMBER", dn); //$NON-NLS-1$
 	}
 
 	/** Obtiene el nombre del titular del DNIe.
 	 * @return Nombre del titular del DNIe. */
 	public String getName() {
-		return this.name;
+		return name;
 	}
 
 	/** Obtiene el primer apellido del titular del DNIe.
 	 * @return Primer apellido del titular del DNIe. */
 	public String getSurname1() {
-		return this.sn1;
+		return sn1;
 	}
 
 	/** Obtiene el segundo apellido del titular del DNIe.
 	 * @return Segundo apellido del titular del DNIe. */
 	public String getSurname2() {
-		return this.sn2;
+		return sn2;
 	}
 
 	/** Obtiene el n&uacute;mero del DNIe.
 	 * @return N&uacute;mero del DNIe. */
 	public String getNumber() {
-		return this.num;
+		return num;
 	}
 
-    /** Obtiene el nombre com&uacute;n (Common Name, CN) de un <i>Principal</i>
-     * X.400. Si no se encuentra el CN, se devuelve la unidad organizativa
-     * (Organization Unit, OU).
-     * @param principal
-     *        <i>Principal</i> del cual queremos obtener el nombre
-     *        com&uacute;n
-     * @return Nombre com&uacute;n (Common Name, CN) de un <i>Principal</i>
-     *         X.400 */
+    /** Obtiene el nombre com&uacute;n (Common Name, CN) de un <i>Principal</i> X&#46;400.
+     * Si no se encuentra el CN, se devuelve la unidad organizativa (Organization Unit, OU).
+     * @param principal <i>Principal</i> del cual queremos obtener el nombre com&uacute;n
+     * @return Nombre com&uacute;n (Common Name, CN) de un <i>Principal</i> X&#46;400. */
     private static String getCN(final String principal) {
         if (principal == null) {
             return null;
         }
 
-        String rdn = getRDNvalueFromLdapName("cn", principal); //$NON-NLS-1$
+        String rdn = getRdnValueFromLdapName("cn", principal); //$NON-NLS-1$
         if (rdn == null) {
-            rdn = getRDNvalueFromLdapName("ou", principal); //$NON-NLS-1$
+            rdn = getRdnValueFromLdapName("ou", principal); //$NON-NLS-1$
         }
 
         if (rdn != null) {
@@ -98,22 +89,33 @@ public final class DnieCertParseUtil {
 
         final int i = principal.indexOf('=');
         if (i != -1) {
-            LOGGER.warning("No se ha podido obtener el Common Name ni la Organizational Unit, se devolvera el fragmento mas significativo"); //$NON-NLS-1$
-            return getRDNvalueFromLdapName(principal.substring(0, i), principal);
+        	JmcLogger.warning(
+        		"No se ha podido obtener el CN ni la OU, se devolvera el fragmento mas significativo" //$NON-NLS-1$
+    		);
+            return getRdnValueFromLdapName(principal.substring(0, i), principal);
         }
 
-        LOGGER.warning("Principal no valido, se devolvera la entrada"); //$NON-NLS-1$
+        JmcLogger.warning("Principal no valido, se devolvera el valor de entrada"); //$NON-NLS-1$
         return principal;
     }
 
-    /** Recupera el valor de un RDN (<i>Relative Distinguished Name</i>) de un principal. El valor de retorno no incluye
-     * el nombre del RDN, el igual, ni las posibles comillas que envuelvan el valor.
-     * La funci&oacute;n no es sensible a la capitalizaci&oacute;n del RDN. Si no se
-     * encuentra, se devuelve {@code null}.
+	@Override
+	public String toString() {
+		return
+			"Nombre: "           + name + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+			"Primer apellido: "  + sn1  + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+			"Segundo apellido: " + sn2  + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+			"Numero: "           + num; //$NON-NLS-1$
+	}
+
+    /** Recupera el valor de un RDN (<i>Relative Distinguished Name</i>) de un principal.
+     * El valor de retorno no incluye el nombre del RDN, el igual, ni las posibles comillas que envuelvan el valor.
+     * La funci&oacute;n no es sensible a la capitalizaci&oacute;n del RDN.
+     * Si no se encuentra, se devuelve {@code null}.
      * @param rdn RDN que deseamos encontrar.
      * @param principal Principal del que extraer el RDN (seg&uacute;n la <a href="http://www.ietf.org/rfc/rfc4514.txt">RFC 4514</a>).
      * @return Valor del RDN indicado o {@code null} si no se encuentra. */
-    private static String getRDNvalueFromLdapName(final String rdn, final String principal) {
+    private static String getRdnValueFromLdapName(final String rdn, final String principal) {
 
         int offset1 = 0;
         while ((offset1 = principal.toLowerCase(Locale.US).indexOf(rdn.toLowerCase(), offset1)) != -1) {
@@ -149,7 +151,7 @@ public final class DnieCertParseUtil {
             if (principal.charAt(offset1) == ',') {
                 return ""; //$NON-NLS-1$
             }
-            else if (principal.charAt(offset1) == '"') {
+			if (principal.charAt(offset1) == '"') {
                 offset1++;
                 if (offset1 >= principal.length()) {
                     return ""; //$NON-NLS-1$
@@ -159,23 +161,18 @@ public final class DnieCertParseUtil {
                 if (offset2 == offset1) {
                     return ""; //$NON-NLS-1$
                 }
-                else if (offset2 != -1) {
+				if (offset2 != -1) {
                     return principal.substring(offset1, offset2);
                 }
-                else {
-                    return principal.substring(offset1);
-                }
+				return principal.substring(offset1);
             }
-            else {
-                offset2 = principal.indexOf(',', offset1);
-                if (offset2 != -1) {
-                    return principal.substring(offset1, offset2).trim();
-                }
-                return principal.substring(offset1).trim();
-            }
+			offset2 = principal.indexOf(',', offset1);
+			if (offset2 != -1) {
+			    return principal.substring(offset1, offset2).trim();
+			}
+			return principal.substring(offset1).trim();
         }
 
         return null;
     }
-
 }

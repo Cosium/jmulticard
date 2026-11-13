@@ -52,33 +52,34 @@ import es.gob.jmulticard.asn1.der.Sequence;
  *     ... -- For future extensions
  *   }
  * </PRE>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class PrivateRsaKeyAttributes extends Sequence {
 
 	/** Construye un objeto ASN&#46;1 PKCS#15 <i>PrivateRsaKeyAttributes</i>. */
 	public PrivateRsaKeyAttributes() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					Path.class,
-					false
-				),
-				new OptionalDecoderObjectElement(
-					DerInteger.class,
-					false
-				)
-				// Faltaria el KeyInfo, pero es un campo
-				// que normalmente no esta
-			}
+			new OptionalDecoderObjectElement(
+				Path.class,
+				false
+			),
+			new OptionalDecoderObjectElement(
+				DerInteger.class,
+				false
+			)
+			// Faltaria el KeyInfo, pero es un campo
+			// que normalmente no esta
 		);
 	}
 
-	String getPath() {
+	/** Obtiene la ruta hacia la clave privada.
+	 * @return Ruta hacia la clave privada. */
+	public String getPath() {
 		return ((Path)getElementAt(0)).getPathString();
 	}
 
-	int getKeyLength() {
+	/** Obtiene la longitud de la clave privada.
+	 * @return Longitud de la clave privada. */
+	public int getKeyLength() {
 		return ((DerInteger)getElementAt(1)).getIntegerValue().intValue();
 	}
-
 }

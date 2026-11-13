@@ -52,7 +52,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
  *     ... -- For future extensions
  *   }
  * </PRE>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class PrivateRsaKeyAttributesContextSpecific extends ContextSpecific {
 
 	private static final byte TAG = (byte) 0xA1;
@@ -62,18 +62,16 @@ public final class PrivateRsaKeyAttributesContextSpecific extends ContextSpecifi
 		super(PrivateRsaKeyAttributes.class);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
 			throw new Asn1Exception(
 				"PrivateRsaKeyAttributesContextSpecific esperaba una etiqueta especifica de contexto " + HexUtils.hexify(new byte[] { TAG }, false) + //$NON-NLS-1$
-				" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
+					" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
 			);
 		}
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public String toString() {
 		return getObject().toString();
@@ -86,5 +84,4 @@ public final class PrivateRsaKeyAttributesContextSpecific extends ContextSpecifi
 	int getKeyLength() {
 		return ((PrivateRsaKeyAttributes)getObject()).getKeyLength();
 	}
-
 }

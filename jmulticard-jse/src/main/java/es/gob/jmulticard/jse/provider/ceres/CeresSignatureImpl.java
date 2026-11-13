@@ -16,6 +16,7 @@ import es.gob.jmulticard.card.CryptoCardException;
 import es.gob.jmulticard.card.PinException;
 import es.gob.jmulticard.card.fnmt.ceres.Ceres;
 import es.gob.jmulticard.card.fnmt.ceres.CeresPrivateKeyReference;
+import es.gob.jmulticard.jse.provider.ProviderUtil;
 import es.gob.jmulticard.jse.provider.SignatureAuthException;
 
 /** Implementaci&oacute;n del SPI <code>Signature</code> para tarjeta FNMT-RCM-CERES.
@@ -33,22 +34,21 @@ abstract class CeresSignatureImpl extends SignatureSpi {
 
     private Signature signatureVerifier = null;
 
+    /** Clave privada. */
     private CeresPrivateKey privateKey = null;
 
+    /** Algoritmo de firma. */
     private final String signatureAlgo;
 
     CeresSignatureImpl(final String signatureAlgorithm) {
-        super();
         this.signatureAlgo = signatureAlgorithm;
     }
 
-    /** {@inheritDoc} */
     @Override
     protected Object engineGetParameter(final String param) {
         throw new InvalidParameterException("Parametro no soportado"); //$NON-NLS-1$
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineInitSign(final PrivateKey prKey) throws InvalidKeyException {
         if (prKey == null) {
@@ -61,7 +61,6 @@ abstract class CeresSignatureImpl extends SignatureSpi {
         this.data.reset();
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineInitVerify(final PublicKey publicKey) throws InvalidKeyException {
         this.data.reset();
@@ -69,12 +68,15 @@ abstract class CeresSignatureImpl extends SignatureSpi {
         	this.signatureVerifier = Signature.getInstance(this.signatureAlgo);
             try {
             	if (this.signatureVerifier.getProvider() instanceof CeresProvider) {
-            		this.signatureVerifier = Signature.getInstance(this.signatureAlgo, "SunRsaSign"); //$NON-NLS-1$
+            		this.signatureVerifier = Signature.getInstance(
+        				this.signatureAlgo,
+        				ProviderUtil.getDefaultOtherProvider("Signature", this.signatureAlgo) //$NON-NLS-1$
+    				);
             	}
             }
             catch (final NoSuchProviderException e) {
                 throw new IllegalStateException(
-            		"No esta instalado el proveedor SunRsaSign", e //$NON-NLS-1$
+            		"No esta instalado el proveedor por defecto de firma", e //$NON-NLS-1$
                 );
             }
         }
@@ -86,13 +88,11 @@ abstract class CeresSignatureImpl extends SignatureSpi {
         this.signatureVerifier.initVerify(publicKey);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineSetParameter(final String param, final Object value) {
         throw new InvalidParameterException("Parametro no soportado"); //$NON-NLS-1$
     }
 
-    /** {@inheritDoc} */
     @Override
     protected byte[] engineSign() throws SignatureException {
 
@@ -120,19 +120,16 @@ abstract class CeresSignatureImpl extends SignatureSpi {
 		}
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineUpdate(final byte b) {
         this.data.write(b);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineUpdate(final byte[] b, final int off, final int len) {
         this.data.write(b, off, len);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected boolean engineVerify(final byte[] sigBytes) throws SignatureException {
         if (this.signatureVerifier == null) {

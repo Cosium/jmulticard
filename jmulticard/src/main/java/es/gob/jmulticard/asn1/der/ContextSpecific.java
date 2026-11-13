@@ -39,6 +39,8 @@
  */
 package es.gob.jmulticard.asn1.der;
 
+import java.lang.reflect.InvocationTargetException;
+
 import es.gob.jmulticard.HexUtils;
 import es.gob.jmulticard.asn1.Asn1Exception;
 import es.gob.jmulticard.asn1.DecoderObject;
@@ -46,46 +48,53 @@ import es.gob.jmulticard.asn1.Tlv;
 import es.gob.jmulticard.asn1.TlvException;
 
 /** Tipo ASN&#46;1 espec&iacute;fico del contexto.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public abstract class ContextSpecific extends DecoderObject {
 
     private DecoderObject object = null;
 
-    protected DecoderObject getObject() {
-        if (this.object == null) {
+    /** Obtiene el objeto ASN&#46;1.
+     * @return Objeto ASN&#46;1. */
+    protected final DecoderObject getObject() {
+        if (object == null) {
             throw new IllegalStateException();
         }
-        return this.object;
+        return object;
     }
 
     @Override
     protected void decodeValue() throws Asn1Exception, TlvException {
-        final Tlv tlv = new Tlv(this.getRawDerValue());
+
         final DecoderObject tmpDo;
         try {
-            tmpDo = this.elementType.getConstructor().newInstance();
+            tmpDo = elementType.getConstructor().newInstance();
         }
-        catch (final Exception e) {
+        catch (final IllegalAccessException    |
+        		     InstantiationException    |
+        		     IllegalArgumentException  |
+        		     InvocationTargetException |
+        		     NoSuchMethodException     |
+        		     SecurityException e) {
             throw new Asn1Exception(
-        		"No se ha podido instanciar un " + this.elementType.getName() + " en el contexto especifico: " + e, e //$NON-NLS-1$ //$NON-NLS-2$
+        		"No se ha podido instanciar un " + elementType.getName() + " en el contexto especifico", e //$NON-NLS-1$ //$NON-NLS-2$
             );
         }
+        final Tlv tlv = new Tlv(getBytes());
         tmpDo.setDerValue(tlv.getValue());
-        this.object = tmpDo;
+        object = tmpDo;
     }
 
     private final Class<? extends DecoderObject> elementType;
 
     /** Construye un tipo ASN&#46;1 espec&iacute;fico del contexto.
      * @param type Tipo de elemento contenido dentro de este objeto. */
-    public ContextSpecific(final Class<? extends DecoderObject> type) {
-        super();
+    protected ContextSpecific(final Class<? extends DecoderObject> type) {
         if (type == null) {
             throw new IllegalArgumentException(
         		"El tipo contenido dentro de ContextSpecific no puede ser nulo" //$NON-NLS-1$
     		);
         }
-        this.elementType = type;
+        elementType = type;
     }
 
     @Override
@@ -93,12 +102,11 @@ public abstract class ContextSpecific extends DecoderObject {
         throw new UnsupportedOperationException("No hay tipo por defecto"); //$NON-NLS-1$
     }
 
-    /** {@inheritDoc} */
     @Override
     public void checkTag(final byte tag) throws Asn1Exception {
         if ((tag & 0x0c0) != 0x080) {
             throw new Asn1Exception(
-        		"La etiqueta " + HexUtils.hexify(new byte[] { tag}, false) + //$NON-NLS-1$
+        		"La etiqueta " + HexUtils.hexify(new byte[] { tag }, false) + //$NON-NLS-1$
                     " no es valida para un objeto especifico del contexto" //$NON-NLS-1$
             );
         }

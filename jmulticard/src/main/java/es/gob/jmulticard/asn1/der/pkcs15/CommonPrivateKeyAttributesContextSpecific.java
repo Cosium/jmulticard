@@ -64,25 +64,24 @@ public final class CommonPrivateKeyAttributesContextSpecific extends ContextSpec
 		super(CommonPrivateKeyAttributes.class);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
 			throw new Asn1Exception(
 				"CommonPrivateKeyAttributesContextSpecific esperaba una etiqueta especifica de contexto " + HexUtils.hexify(new byte[] { TAG }, false) + //$NON-NLS-1$
-				" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
+					" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
 			);
 		}
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public String toString() {
 		return getObject().toString();
 	}
 
-	X500Principal getKeyRdn() {
+	/** Obtiene el <code>Principal</code> X&#46;509 de la clave privada.
+	 * @return <code>Principal</code> X&#46;509 de la clave privada. */
+	public X500Principal getKeyPrincipal() {
 		return ((CommonPrivateKeyAttributes)getObject()).getKeyPrincipal();
 	}
-
 }

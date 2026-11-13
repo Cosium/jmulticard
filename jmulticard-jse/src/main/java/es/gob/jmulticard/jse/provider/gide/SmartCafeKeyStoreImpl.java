@@ -42,7 +42,6 @@ package es.gob.jmulticard.jse.provider.gide;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.PasswordProtection;
@@ -52,6 +51,7 @@ import java.security.KeyStoreSpi;
 import java.security.PrivateKey;
 import java.security.ProviderException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,58 +63,64 @@ import java.util.logging.Logger;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.PasswordCallback;
 
-import es.gob.jmulticard.JseCryptoHelper;
-import es.gob.jmulticard.apdu.connection.ApduConnection;
+import es.gob.jmulticard.HexUtils;
 import es.gob.jmulticard.card.PrivateKeyReference;
 import es.gob.jmulticard.card.gide.smartcafe.SmartCafePkcs15Applet;
 import es.gob.jmulticard.card.gide.smartcafe.SmartCafePrivateKeyReference;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.crypto.BcCryptoHelper;
+import es.gob.jmulticard.jse.provider.CachePasswordCallback;
+import es.gob.jmulticard.jse.provider.ProviderUtil;
 
 /** Implementaci&oacute;n del SPI <code>KeyStore</code> para tarjeta G&amp;D SmartCafe con Applet PKCS#15.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
 
-	private static final Logger LOGGER = Logger.getLogger("es.gob.jmulticard"); //$NON-NLS-1$
+	private static final Logger LOGGER = Logger.getLogger(SmartCafeKeyStoreImpl.class.getName());
 
     private SmartCafePkcs15Applet cryptoCard = null;
     private List<String> aliases = null;
 
-    /** {@inheritDoc} */
     @Override
     public Enumeration<String> engineAliases() {
-        return Collections.enumeration(this.aliases);
+        return Collections.enumeration(aliases);
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineContainsAlias(final String alias) {
-        return this.aliases.contains(alias);
+        return aliases.contains(alias);
     }
 
-    /** {@inheritDoc} */
     @Override
     public Certificate engineGetCertificate(final String alias) {
     	if (!engineContainsAlias(alias)) {
     		return null;
     	}
-        return this.cryptoCard.getCertificate(alias);
+        return cryptoCard.getCertificate(alias);
     }
 
-    /** {@inheritDoc} */
     @Override
-    public String engineGetCertificateAlias(final Certificate cert) {
-        if (!(cert instanceof X509Certificate)) {
+    public String engineGetCertificateAlias(final Certificate otherCert) {
+        if (!(otherCert instanceof X509Certificate)) {
             return null;
         }
-        final BigInteger serial = ((X509Certificate) cert).getSerialNumber();
-        for (final String alias : this.aliases) {
-            if (((X509Certificate) engineGetCertificate(alias)).getSerialNumber() == serial) {
-                return alias;
-            }
+        for (final String alias : aliases) {
+        	final X509Certificate myCert = (X509Certificate) engineGetCertificate(alias);
+            try {
+				if (myCert != null && HexUtils.arrayEquals(otherCert.getEncoded(), myCert.getEncoded())) {
+				    return alias;
+				}
+			}
+            catch (final CertificateEncodingException e) {
+            	LOGGER.warning(
+        			"No se han podido comparar certificados: " + e //$NON-NLS-1$
+    			);
+				return null;
+			}
         }
         return null;
     }
 
-    /** {@inheritDoc} */
     @Override
     public Certificate[] engineGetCertificateChain(final String alias) {
     	LOGGER.warning(
@@ -123,7 +129,6 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
     	return new Certificate[] { engineGetCertificate(alias) };
     }
 
-    /** {@inheritDoc} */
     @Override
     public Key engineGetKey(final String alias, final char[] password) {
     	if (!engineContainsAlias(alias)) {
@@ -132,9 +137,9 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
     	if (password != null) {
     		// Establecemos el PasswordCallback
     		final PasswordCallback pwc = new CachePasswordCallback(password);
-    		this.cryptoCard.setPasswordCallback(pwc);
+    		cryptoCard.setPasswordCallback(pwc);
     	}
-        final PrivateKeyReference pkRef = this.cryptoCard.getPrivateKey(alias);
+        final PrivateKeyReference pkRef = cryptoCard.getPrivateKey(alias);
 		if (!(pkRef instanceof SmartCafePrivateKeyReference)) {
 			throw new ProviderException(
 				"La clave obtenida de la tarjeta no es del tipo '" + //$NON-NLS-1$
@@ -142,10 +147,9 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
 						(pkRef != null ? pkRef.getClass().getName() : "null") //$NON-NLS-1$
 			);
 		}
-		return new SmartCafePrivateKey((SmartCafePrivateKeyReference) pkRef, this.cryptoCard);
+		return new SmartCafePrivateKey((SmartCafePrivateKeyReference) pkRef, cryptoCard);
     }
 
-    /** {@inheritDoc} */
     @Override
     public KeyStore.Entry engineGetEntry(final String alias,
     		                             final ProtectionParameter protParam) {
@@ -154,13 +158,13 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
     		// Establecemos el CallbackHandler
     		final CallbackHandler chp = ((KeyStore.CallbackHandlerProtection) protParam).getCallbackHandler();
     		if(chp != null) {
-    			this.cryptoCard.setCallbackHandler(chp);
+    			cryptoCard.setCallbackHandler(chp);
     		}
     	}
     	else if (protParam instanceof KeyStore.PasswordProtection) {
     		// Establecemos el PasswordCallback
     		final PasswordCallback pwc = new CachePasswordCallback(((KeyStore.PasswordProtection)protParam).getPassword());
-    		this.cryptoCard.setPasswordCallback(pwc);
+    		cryptoCard.setPasswordCallback(pwc);
     	}
     	else {
     		LOGGER.warning(
@@ -178,25 +182,21 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
     	return new PrivateKeyEntry(key, engineGetCertificateChain(alias));
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineIsCertificateEntry(final String alias) {
         return false;
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineIsKeyEntry(final String alias) {
-        return this.aliases.contains(alias);
+        return aliases.contains(alias);
     }
 
-    /** {@inheritDoc} */
     @Override
     public int engineSize() {
-        return this.aliases.size();
+        return aliases.size();
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineEntryInstanceOf(final String alias, final Class<? extends KeyStore.Entry> entryClass) {
         if (!engineContainsAlias(alias)) {
@@ -205,58 +205,43 @@ public final class SmartCafeKeyStoreImpl extends KeyStoreSpi {
         return entryClass.equals(PrivateKeyEntry.class);
     }
 
-    /** <code>PasswordCallback</code> que almacena internamente y devuelve la contrase&ntilde;a con la que se
-     * construy&oacute; o la que se le establece posteriormente. */
-    private static final class CachePasswordCallback extends PasswordCallback {
-
-        private static final long serialVersionUID = 816457144215238935L;
-
-        /** Contruye una Callback con una contrase&ntilde;a preestablecida.
-         * @param password Contrase&ntilde;a por defecto. */
-        public CachePasswordCallback(final char[] password) {
-            super(">", false); //$NON-NLS-1$
-            setPassword(password);
-        }
-    }
-
-    /** {@inheritDoc} */
     @Override
     public void engineLoad(final InputStream stream, final char[] password) throws IOException {
     	// Ponemos la conexion por defecto
-    	final ApduConnection conn = new es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection();
+    	final ApduConnection conn = ProviderUtil.getDefaultConnection();
 
         // Aqui se realiza el acceso e inicializacion de la tarjeta
-    	this.cryptoCard = new SmartCafePkcs15Applet(conn, new JseCryptoHelper());
+    	cryptoCard = new SmartCafePkcs15Applet(conn, new BcCryptoHelper());
     	if (password != null) {
-    		this.cryptoCard.setPasswordCallback(new CachePasswordCallback(password));
+    		cryptoCard.setPasswordCallback(new CachePasswordCallback(password));
     	}
-    	this.aliases = Arrays.asList(this.cryptoCard.getAliases());
+    	aliases = Arrays.asList(cryptoCard.getAliases());
     }
 
-    /** {@inheritDoc} */
     @Override
     public void engineLoad(final KeyStore.LoadStoreParameter param) throws IOException {
-		final ApduConnection conn = new es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection();
-		this.cryptoCard = new SmartCafePkcs15Applet(conn, new JseCryptoHelper());
+		final ApduConnection conn = ProviderUtil.getDefaultConnection();
+		cryptoCard = new SmartCafePkcs15Applet(conn, new BcCryptoHelper());
     	if (param != null) {
     		final ProtectionParameter pp = param.getProtectionParameter();
     		if (pp instanceof KeyStore.CallbackHandlerProtection) {
     			if (((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler() == null) {
     				throw new IllegalArgumentException("El CallbackHandler no puede ser nulo"); //$NON-NLS-1$
     			}
-    			this.cryptoCard.setCallbackHandler(((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler());
+    			cryptoCard.setCallbackHandler(((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler());
     		}
     		else if (pp instanceof KeyStore.PasswordProtection) {
     			final PasswordCallback pwc = new CachePasswordCallback(((PasswordProtection) pp).getPassword());
-    			this.cryptoCard.setPasswordCallback(pwc);
+    			cryptoCard.setPasswordCallback(pwc);
     		}
     		else {
     			LOGGER.warning(
-	   				"Se ha proporcionado un LoadStoreParameter de tipo no soportado, se ignorara: " + (pp != null ? pp.getClass().getName() : "NULO") //$NON-NLS-1$ //$NON-NLS-2$
+	   				"Se ha proporcionado un LoadStoreParameter de tipo no soportado, se ignorara: " + //$NON-NLS-1$
+   						(pp != null ? pp.getClass().getName() : "NULO") //$NON-NLS-1$
 				);
     		}
     	}
-    	this.aliases = Arrays.asList(this.cryptoCard.getAliases());
+    	aliases = Arrays.asList(cryptoCard.getAliases());
     }
 
     //***********************************************************************

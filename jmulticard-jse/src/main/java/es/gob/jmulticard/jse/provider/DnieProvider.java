@@ -39,37 +39,52 @@
  */
 package es.gob.jmulticard.jse.provider;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.security.Provider;
 import java.security.ProviderException;
+import java.util.Properties;
 
-import es.gob.jmulticard.apdu.connection.ApduConnection;
 import es.gob.jmulticard.card.dnie.Dnie;
+import es.gob.jmulticard.connection.ApduConnection;
 
-/** Proveedor criptogr&aacute;fico JCA para DNIe.
+/** Proveedor criptogr&aacute;fico JCA para DNIe y tarjetas compatibles.
  * Crea dos servicios:
  * <dl>
- * <dt><code>KeyStore</code></dt>
- * <dd><i>DNI</i></dd>
- * <dt><code>Signature</code></dt>
- * <dd><i>SHA1withRSA</i>, <i>SHA256withRSA</i>, <i>SHA384withRSA</i>, <i>SHA512withRSA</i></dd>
+ *   <dt><code>KeyStore</code></dt>
+ *     <dd><i>DNI</i></dd>
+ *   <dt><code>Signature</code></dt>
+ *     <dd><i>SHA1withRSA</i>, <i>SHA256withRSA</i>, <i>SHA384withRSA</i>, <i>SHA512withRSA</i></dd>
  * </dl>
+ * Adicionalmente, en JVM no de Oracle/Sun, crea el servicio <code>Cipher.RSA/ECB/PKCS1Padding</code>.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class DnieProvider extends Provider {
 
+    /** Firma RSA con huellas SHA-512. */
     private static final String SHA512WITH_RSA = "SHA512withRSA"; //$NON-NLS-1$
 
+    /** Firma RSA con huellas SHA-384. */
     private static final String SHA384WITH_RSA = "SHA384withRSA"; //$NON-NLS-1$
 
+    /** Firma RSA con huellas SHA-256. */
     private static final String SHA256WITH_RSA = "SHA256withRSA"; //$NON-NLS-1$
 
+    /** Firma RSA con huellas SHA-1. */
     private static final String SHA1WITH_RSA = "SHA1withRSA"; //$NON-NLS-1$
 
     private static final String DNIE_PRIVATE_KEY = "es.gob.jmulticard.jse.provider.DniePrivateKey"; //$NON-NLS-1$
 
+    private static final String KEYSTORE_DNI = "KeyStore.DNI"; //$NON-NLS-1$
+    private static final String KEYSTORE_CERES430 = "KeyStore.CERES430"; //$NON-NLS-1$
+    
+    private static final String CONFIG_PARAM_PROVIDER_NAME = "name"; //$NON-NLS-1$
+    private static final String CONFIG_PARAM_ALLOW_ANOTHER_CARDS = "allowAnotherCards"; //$NON-NLS-1$
+
     private static final long serialVersionUID = -1046745919235177156L;
 
-    private static final String INFO = "Proveedor para el DNIe"; //$NON-NLS-1$
-    private static final double VERSION = 0.2d;
+    private static final String INFO = "Proveedor para el DNIe y tarjetas compatibles"; //$NON-NLS-1$
+    private static final double VERSION = 0.4;
     private static final String NAME = "DNIeJCAProvider"; //$NON-NLS-1$
 
     private static ApduConnection defaultConnection = null;
@@ -82,24 +97,38 @@ public final class DnieProvider extends Provider {
     	return defaultConnection;
     }
 
-    /** Crea un proveedor JCA para DNI Electr&oacute;nico (DNIe) con la conexi&oacute;n por defecto. */
+    /**
+     * Crea un proveedor JCA para DNI Electr&oacute;nico (DNIe) con la conexi&oacute;n y el nombre
+     * por defecto.
+     */
     public DnieProvider() {
     	this(null);
     }
 
-    /** Crea un proveedor JCA para DNI Electr&oacute;nico (DNIe).
-     * @param conn Conexi&oacute;n a usar para el env&iacute;o y recepci&oacute;n de APDU. */
+    /**
+     * Crea un proveedor JCA para DNI Electr&oacute;nico (DNIe) con el nombre por defecto.
+     * @param conn Conexi&oacute;n a usar para el env&iacute;o y recepci&oacute;n de APDU.
+     */
     public DnieProvider(final ApduConnection conn) {
-        super(NAME, VERSION, INFO);
+        this(conn, NAME);
+    }
+    
+    /**
+     * Crea un proveedor JCA para DNI Electr&oacute;nico (DNIe) y se le asigna un nombre concreto.
+     * @param conn Conexi&oacute;n a usar para el env&iacute;o y recepci&oacute;n de APDU.
+     * @param name Nombre que se le asigna al proveedor.
+     */
+    public DnieProvider(final ApduConnection conn, String name) {
+        super(name, VERSION, INFO);	// Se mantiene este constructor por compatibilidad con Java 8
 
         try {
 			defaultConnection = conn == null ?
-				(ApduConnection) Class.forName("es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection").getConstructor().newInstance() : //$NON-NLS-1$
+				ProviderUtil.getDefaultConnection() :
 					conn;
 		}
         catch (final Exception e) {
 			throw new ProviderException(
-				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto: " + e, e //$NON-NLS-1$
+				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto", e //$NON-NLS-1$
 			);
 		}
 
@@ -108,50 +137,96 @@ public final class DnieProvider extends Provider {
         	defaultConnection.close();
         }
         catch(final Exception e) {
-        	throw new ProviderException("No se ha podido inicializar el proveedor de DNIe: " + e, e); //$NON-NLS-1$
+        	throw new ProviderException("No se ha podido inicializar el proveedor de DNIe", e); //$NON-NLS-1$
         }
 
         // KeyStore
         put("KeyStore.DNI", "es.gob.jmulticard.jse.provider.DnieKeyStoreImpl"); //$NON-NLS-1$ //$NON-NLS-2$
 
         // Motores de firma
-        put("Signature.SHA1withRSA", "es.gob.jmulticard.jse.provider.DnieSignatureImpl$Sha1"); //$NON-NLS-1$ //$NON-NLS-2$
+        put("Signature.SHA1withRSA",   "es.gob.jmulticard.jse.provider.DnieSignatureImpl$Sha1");   //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA256withRSA", "es.gob.jmulticard.jse.provider.DnieSignatureImpl$Sha256"); //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA384withRSA", "es.gob.jmulticard.jse.provider.DnieSignatureImpl$Sha384"); //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA512withRSA", "es.gob.jmulticard.jse.provider.DnieSignatureImpl$Sha512"); //$NON-NLS-1$ //$NON-NLS-2$
 
-        // Claves soportadas
-        put("Signature.SHA1withRSA SupportedKeyClasses", DnieProvider.DNIE_PRIVATE_KEY); //$NON-NLS-1$
-        put("Signature.SHA256withRSA SupportedKeyClasses", DnieProvider.DNIE_PRIVATE_KEY); //$NON-NLS-1$
-        put("Signature.SHA384withRSA SupportedKeyClasses", DnieProvider.DNIE_PRIVATE_KEY); //$NON-NLS-1$
-        put("Signature.SHA512withRSA SupportedKeyClasses", DnieProvider.DNIE_PRIVATE_KEY); //$NON-NLS-1$
+        // Claves soportadas para firma
+        put("Signature.SHA1withRSA SupportedKeyClasses",     DNIE_PRIVATE_KEY); //$NON-NLS-1$
+        put("Signature.SHA256withRSA SupportedKeyClasses",   DNIE_PRIVATE_KEY); //$NON-NLS-1$
+        put("Signature.SHA384withRSA SupportedKeyClasses",   DNIE_PRIVATE_KEY); //$NON-NLS-1$
+        put("Signature.SHA512withRSA SupportedKeyClasses",   DNIE_PRIVATE_KEY); //$NON-NLS-1$
 
         // Alias de los nombres de algoritmos de firma
-        put("Alg.Alias.Signature.1.2.840.113549.1.1.5", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.5", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.1.3.14.3.2.29", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHAwithRSA", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-1withRSA", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA1withRSAEncryption", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-1withRSAEncryption", DnieProvider.SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.1.2.840.113549.1.1.5",      SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.5",  SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.1.3.14.3.2.29",             SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHAwithRSA",                SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-1withRSA",              SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA1withRSAEncryption",     SHA1WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-1withRSAEncryption",    SHA1WITH_RSA); //$NON-NLS-1$
 
-        put("Alg.Alias.Signature.1.2.840.113549.1.1.11", DnieProvider.SHA256WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.11", DnieProvider.SHA256WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-256withRSA", DnieProvider.SHA256WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-256withRSAEncryption", DnieProvider.SHA256WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA256withRSAEncryption", DnieProvider.SHA256WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.1.2.840.113549.1.1.11",     SHA256WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.11", SHA256WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-256withRSA",            SHA256WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-256withRSAEncryption",  SHA256WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA256withRSAEncryption",   SHA256WITH_RSA); //$NON-NLS-1$
 
-        put("Alg.Alias.Signature.1.2.840.113549.1.1.12", DnieProvider.SHA384WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.12", DnieProvider.SHA384WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-384withRSA", DnieProvider.SHA384WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-384withRSAEncryption", DnieProvider.SHA384WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA384withRSAEncryption", DnieProvider.SHA384WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.1.2.840.113549.1.1.12",     SHA384WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.12", SHA384WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-384withRSA",            SHA384WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-384withRSAEncryption",  SHA384WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA384withRSAEncryption",   SHA384WITH_RSA); //$NON-NLS-1$
 
-        put("Alg.Alias.Signature.1.2.840.113549.1.1.13", DnieProvider.SHA512WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.13", DnieProvider.SHA512WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-512withRSA", DnieProvider.SHA512WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA-512withRSAEncryption", DnieProvider.SHA512WITH_RSA); //$NON-NLS-1$
-        put("Alg.Alias.Signature.SHA512withRSAEncryption", DnieProvider.SHA512WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.1.2.840.113549.1.1.13",     SHA512WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.13", SHA512WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-512withRSA",            SHA512WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA-512withRSAEncryption",  SHA512WITH_RSA); //$NON-NLS-1$
+        put("Alg.Alias.Signature.SHA512withRSAEncryption",   SHA512WITH_RSA); //$NON-NLS-1$
+
+        // Las funciones de cifrado RSA con clave privada solo funcionan en la VM
+        // de Oracle si el codigo esta firmado con un certificado emitido por Oracle.
+        final String vmVendor = System.getProperty("java.vendor"); //$NON-NLS-1$
+        if (vmVendor == null || !vmVendor.contains("Oracle") && !vmVendor.contains("Sun Microsystems")) { //$NON-NLS-1$ //$NON-NLS-2$
+
+	        // Cifrado
+	        put("Cipher.RSA/ECB/PKCS1Padding", "es.gob.jmulticard.jse.provider.rsacipher.DnieCipherImpl"); //$NON-NLS-1$ //$NON-NLS-2$
+
+	        // Claves soportadas para cifrado
+	        put("Cipher.RSA/ECB/PKCS1Padding SupportedKeyClasses", DNIE_PRIVATE_KEY); //$NON-NLS-1$
+        }
     }
 
+    // No agregamos el @Override para mantener la compatibilidad con Java 8
+ 	public Provider configure(final String config) {
+
+		Properties prop = new Properties();
+		try (Reader reader = new StringReader(config)) {
+			prop.load(reader);
+		} catch (IOException e) {
+			throw new SecurityException("La configuracion del proveedor debe tener formato de properties", e); //$NON-NLS-1$
+		}
+ 		
+		String providerName = NAME;
+		if (prop.containsKey(CONFIG_PARAM_PROVIDER_NAME)) {
+			providerName = prop.getProperty(CONFIG_PARAM_PROVIDER_NAME);
+		}
+
+		Provider newProvider = new DnieProvider(defaultConnection, providerName);
+
+		if (prop.containsKey(CONFIG_PARAM_ALLOW_ANOTHER_CARDS)) {
+			newProvider.remove(KEYSTORE_DNI);
+			if (Boolean.parseBoolean(prop.getProperty(CONFIG_PARAM_ALLOW_ANOTHER_CARDS))) {
+				newProvider.put(KEYSTORE_DNI, "es.gob.jmulticard.jse.provider.JMulticardKeyStoreImpl"); //$NON-NLS-1$
+				newProvider.put(KEYSTORE_CERES430, "es.gob.jmulticard.jse.provider.JMulticardKeyStoreImpl"); //$NON-NLS-1$
+			} else {
+				newProvider.put(KEYSTORE_DNI, "es.gob.jmulticard.jse.provider.DnieKeyStoreImpl"); //$NON-NLS-1$
+			}
+		}
+
+    	return newProvider;
+    }
+
+ 	// No agregamos el @Override para mantener la compatibilidad con Java 8
+ 	public boolean isConfigured() {
+ 		return true;
+ 	}
 }

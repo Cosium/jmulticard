@@ -42,7 +42,7 @@ package es.gob.jmulticard.card;
 import java.security.cert.X509Certificate;
 
 /** Operaciones comunes a todas las tarjetas criptogr&aacute;ficas.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public interface CryptoCard {
 
     /** Obtiene los alias de los certificados de la tarjeta.
@@ -55,9 +55,9 @@ public interface CryptoCard {
      * @return Certificado correspondiente al alias proporcionado o <code>null</code> si no
      *         existe ning&uacute;n certificado con ese alias.
      * @throws CryptoCardException Si ocurre alg&uacute;n problema al recuperar el certificado.
-     * @throws es.gob.jmulticard.card.PinException Si el PIN proporcionado es incorrecto.
-     * @throws es.gob.jmulticard.card.AuthenticationModeLockedException Cuando el DNIe est&aacute; bloqueado. */
-    X509Certificate getCertificate(final String alias) throws CryptoCardException, PinException;
+     * @throws PinException Si el PIN proporcionado es incorrecto.
+     * @throws AuthenticationModeLockedException Cuando la tarjeta est&aacute; bloqueada. */
+    X509Certificate getCertificate(String alias) throws CryptoCardException, PinException;
 
     /** Obtiene una referencia a la clave privada correspondiente al alias proporcionado.
      * @param alias Alias del certificado
@@ -65,16 +65,15 @@ public interface CryptoCard {
      * 		   <code>null</code> si no existe ninguna clave privada con ese alias
      * @throws CryptoCardException Si ocurre alg&uacute;n problema al recuperar la clave privada.
      */
-    PrivateKeyReference getPrivateKey(final String alias) throws CryptoCardException;
+    PrivateKeyReference getPrivateKey(String alias) throws CryptoCardException;
 
     /** Realiza una firma electr&oacute;nica.
      * @param data Datos a firmar.
      * @param algorithm Algoritmo de firma.
      * @param keyRef Referencia a la clave privada de firma.
-     * @return Datos firmados (PKCS#1 v1.5).
-     * @throws es.gob.jmulticard.card.AuthenticationModeLockedException Cuando el DNIe est&aacute; bloqueado.
+     * @return Datos firmados (en el algoritmo y formato que determine la tarjeta).
+     * @throws AuthenticationModeLockedException Cuando la tarjeta est&aacute; bloqueada.
      * @throws CryptoCardException Si ocurre alg&uacute;n problema durante la firma.
-     * @throws es.gob.jmulticard.card.PinException Si el PIN proporcionado es incorrecto o no es posible obtenerlo. */
+     * @throws PinException Si el PIN proporcionado es incorrecto o no es posible obtenerlo. */
     byte[] sign(byte[] data, String algorithm, PrivateKeyReference keyRef) throws CryptoCardException, PinException;
-
 }

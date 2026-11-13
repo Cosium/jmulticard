@@ -10,7 +10,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
  *  Certificates ::= PathOrObjects {PrivateKeyType}
  * </pre>
  * Esta implememtaci&oacute;n solo soporta <code>Path</code> como tipo de los registros.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class CertificatesContextSpecific extends ContextSpecific {
 
 	private static final byte TAG = (byte) 0xA4;
@@ -32,15 +32,13 @@ public final class CertificatesContextSpecific extends ContextSpecific {
 		);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
 			throw new Asn1Exception(
 				"CertificatesContextSpecific esperaba una etiqueta especifica de contexto " + HexUtils.hexify(new byte[] { TAG }, false) + //$NON-NLS-1$
-				" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
+					" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
 			);
 		}
 	}
-
 }

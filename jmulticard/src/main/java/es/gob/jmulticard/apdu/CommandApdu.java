@@ -42,7 +42,7 @@ package es.gob.jmulticard.apdu;
 import java.io.ByteArrayOutputStream;
 
 /** Comando APDU para comunicaci&oacute;n con tarjeta inteligente.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public class CommandApdu extends Apdu {
 
 	private final byte cla;
@@ -52,10 +52,11 @@ public class CommandApdu extends Apdu {
 	private Integer le;
 	private final byte[] body;
 
-
 	private static byte[] getBody(final byte[] bytes) {
 		if (bytes == null || bytes.length < 5) {
-			throw new IllegalArgumentException("La longitud del array de octetos debe ser igual o mayor que 5."); //$NON-NLS-1$
+			throw new IllegalArgumentException(
+				"La longitud del array de octetos debe ser igual o mayor que 5" //$NON-NLS-1$
+			);
 		}
 		final byte[] data;
 		final int i = bytes[4] & 0xff;
@@ -70,13 +71,15 @@ public class CommandApdu extends Apdu {
 	private static Integer getLength(final byte[] bytes) {
 
 		if (bytes == null || bytes.length < 5) {
-			throw new IllegalArgumentException("La longitud del array de octetos debe ser igual o mayor que 5."); //$NON-NLS-1$
+			throw new IllegalArgumentException(
+				"La longitud del array de octetos debe ser igual o mayor que 5." //$NON-NLS-1$
+			);
 		}
 		final int i = bytes[4] & 0xff;
 		if (bytes.length>5 && bytes.length>i+5) {
 			return Integer.valueOf(bytes[i+5]);
 		}
-		else if (bytes.length==5) {
+		if (bytes.length==5) {
 			return Integer.valueOf(i);
 		}
 		return null;
@@ -96,68 +99,71 @@ public class CommandApdu extends Apdu {
 	}
 
 	/** Construye una APDU gen&eacute;rica.
-	 * @param cla Clase (CLA) de APDU.
-	 * @param ins Identificador de la instrucci&oacute;n (INS) que esta APDU representa.
+	 * @param apduCla Clase (CLA) de APDU.
+	 * @param apduIns Identificador de la instrucci&oacute;n (INS) que esta APDU representa.
 	 * @param param1 Primer par&aacute;metro (P1) de la APDU.
 	 * @param param2 Segundo par&aacute;metro (P2) de la APDU.
 	 * @param data Datos del comando.
 	 * @param ne N&uacute;mero de octetos esperados en la respuesta (Ne). */
-	public CommandApdu(final byte cla,
-			           final byte ins,
+	public CommandApdu(final byte apduCla,
+			           final byte apduIns,
 			           final byte param1,
 			           final byte param2,
 			           final byte[] data,
 			           final Integer ne) {
-		super();
-
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-		this.cla = cla;
-		baos.write(cla);
+		cla = apduCla;
+		baos.write(apduCla);
 
-		this.ins = ins;
-		baos.write(ins);
+		ins = apduIns;
+		baos.write(apduIns);
 
-		this.p1 = param1;
+		p1 = param1;
 		baos.write(param1);
 
-		this.p2 = param2;
+		p2 = param2;
 		baos.write(param2);
 
 		if (data == null) {
-			this.body = null;
+			body = null;
 		}
 		else {
-			this.body = new byte[data.length];
-			System.arraycopy(data, 0, this.body, 0, data.length);
+			body = new byte[data.length];
+			System.arraycopy(data, 0, body, 0, data.length);
 
-			if (data.length <= 0xFF) {
-				baos.write(Integer.valueOf(String.valueOf(this.body.length)).byteValue());
+			// Caso 4s: |CLA|INS|P1 |P2 |LC |...BODY...|LE |              len = 7..261
+			if (data.length <= 255) {
+				baos.write(Integer.valueOf(String.valueOf(body.length)).byteValue());
 			}
+			// Caso 3e: |CLA|INS|P1 |P2 |00 |LC1|LC2|...BODY...|          len = 8..65542
 			else {
 				baos.write((byte) 0x00);
-				final int dataLength = this.body.length;
-				final byte lc1 = (byte) (dataLength >> 8 & 0xFF);
-				final byte lc2 = (byte) (dataLength & 0xFF);
-				baos.write(lc1);
-				baos.write(lc2);
+				baos.write((byte) (data.length >> 8));   // LC1
+				baos.write((byte) (data.length & 0xff)); // LC2
 			}
 
-			if (this.body.length > 0) {
+			if (body.length > 0) {
 				try {
-					baos.write(this.body);
+					baos.write(body);
 				}
 				catch (final Exception e) {
 					throw new IllegalArgumentException(
-						"No se pueden tratar los datos de la APDU: " + e //$NON-NLS-1$
+						"No se pueden tratar los datos de la APDU", e //$NON-NLS-1$
 					);
 				}
 			}
 		}
 
-		this.le = ne;
+		le = ne;
 		if (ne != null) {
-			baos.write(ne.byteValue());
+			if (ne.intValue() <= 0xff) {
+				baos.write(ne.byteValue());
+			}
+			else {
+				baos.write((byte) (ne.intValue() >> 8));
+				baos.write((byte) (ne.intValue() & 0xff));
+			}
 		}
 
 		setBytes(baos.toByteArray());
@@ -166,17 +172,17 @@ public class CommandApdu extends Apdu {
 	/** Devuelve la clase (CLA) de APDU.
 	 * @return Clase (CLA) de APDU. */
 	public byte getCla() {
-		return this.cla;
+		return cla;
 	}
 
 	/** Obtiene el cuerpo de la APDU.
 	 * @return Cuerpo de la APDU, o <code>null</code> si no est&aacute; establecido. */
 	public byte[] getData() {
-		if (this.body == null) {
+		if (body == null) {
 			return null;
 		}
-		final byte[] out = new byte[this.body.length];
-		System.arraycopy(this.body, 0, out, 0, this.body.length);
+		final byte[] out = new byte[body.length];
+		System.arraycopy(body, 0, out, 0, body.length);
 		return out;
 	}
 
@@ -184,49 +190,48 @@ public class CommandApdu extends Apdu {
 	 * APDU representa.
 	 * @return Identificador de instrucci&oacute;n. */
 	public byte getIns() {
-		return this.ins;
+		return ins;
 	}
 
-	/** Obtiene el n&uacute;mero m&aacute;ximo de octetos esperados en la APDU de
-	 * respuesta.
+	/** Obtiene el n&uacute;mero m&aacute;ximo de octetos esperados en la APDU de respuesta.
 	 * @return N&uacute;mero m&aacute;ximo de octetos esperados en la APDU de
 	 *         respuesta, o <code>null</code> si no est&aacute; establecido. */
 	public Integer getLe() {
-		return this.le;
+		return le;
 	}
 
 	/** Devuelve el primer par&aacute;metro (P1) de la APDU.
 	 * @return Primer par&aacute;metro (P1) de la APDU. */
 	public byte getP1() {
-		return this.p1;
+		return p1;
 	}
 
 	/** Devuelve el segundo par&aacute;metro (P2) de la APDU.
 	 * @return Segundo par&aacute;metro (P2) de la APDU. */
 	public byte getP2() {
-		return this.p2;
+		return p2;
 	}
 
 	/** Establece el n&uacute;mero de octetos esperados en la APDU de respuesta.
-	 * @param le N&uacute;mero esperado de octetos. */
-	public void setLe(final int le) {
-		this.le = Integer.valueOf(String.valueOf(le));
+	 * @param apduLe N&uacute;mero esperado de octetos. */
+	public void setLe(final int apduLe) {
+		le = Integer.valueOf(String.valueOf(apduLe));
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		baos.write(this.cla);
-		baos.write(this.ins);
-		baos.write(this.p1);
-		baos.write(this.p2);
-		if (this.body != null && this.body.length > 0) {
+		baos.write(cla);
+		baos.write(ins);
+		baos.write(p1);
+		baos.write(p2);
+		if (body != null && body.length > 0) {
 			try {
-				baos.write(this.body);
+				baos.write(body);
 			}
 			catch (final Exception e) {
 				throw new IllegalArgumentException(
-					"No se pueden tratar los datos de la APDU: " + e //$NON-NLS-1$
+					"No se pueden tratar los datos de la APDU", e //$NON-NLS-1$
 				);
 			}
 		}
-		baos.write(le);
+		baos.write(apduLe);
 		setBytes(baos.toByteArray());
 	}
 }

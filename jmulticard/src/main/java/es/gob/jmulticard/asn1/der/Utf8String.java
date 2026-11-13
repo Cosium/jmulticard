@@ -49,7 +49,7 @@ import es.gob.jmulticard.asn1.TlvException;
 
 /** Tipo <i>UTF8String</i> de ASN&#46;1.
  * Incorpora soporte adem&aacute;s para <i>PrintableString</i> y <i>T61String</i>.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class Utf8String extends DecoderObject {
 
 	/** Tipo ASN&#46;1 "UTF8String". */
@@ -61,13 +61,11 @@ public final class Utf8String extends DecoderObject {
     /** Tipo ASN&#46;1 "T61String". */
     private static final byte TAG_T61STRING = (byte) 0x14;
 
-    /** {@inheritDoc} */
     @Override
     protected byte getDefaultTag() {
         return TAG_UTF8STRING;
     }
 
-	/** {@inheritDoc} */
     @Override
     public void checkTag(final byte tag) throws Asn1Exception {
     	if (TAG_UTF8STRING != tag && TAG_PRINTABLESTRING != tag && TAG_T61STRING != tag) {
@@ -85,14 +83,13 @@ public final class Utf8String extends DecoderObject {
 
     @Override
     protected void decodeValue() throws Asn1Exception, TlvException {
-	    	final Tlv tlv = new Tlv(this.getRawDerValue());
-	    	checkTag(tlv.getTag());
-	    	this.stringValue = new String(tlv.getValue(), StandardCharsets.UTF_8);
+    	final Tlv tlv = new Tlv(getBytes());
+    	checkTag(tlv.getTag());
+    	stringValue = new String(tlv.getValue(), StandardCharsets.UTF_8);
     }
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
-    	return this.stringValue;
+    	return stringValue;
     }
 }

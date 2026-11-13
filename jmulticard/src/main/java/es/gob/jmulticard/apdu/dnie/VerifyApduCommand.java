@@ -49,7 +49,8 @@ import es.gob.jmulticard.apdu.CommandApdu;
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class VerifyApduCommand extends CommandApdu {
 
-    private static final byte INS_VERIFY = (byte) 0x20;
+	/** C&oacute;digo de instrucci&oacute;n de la APDU. */
+    public static final byte INS_VERIFY = (byte) 0x20;
 
     private final PasswordCallback pwc;
 
@@ -58,31 +59,30 @@ public final class VerifyApduCommand extends CommandApdu {
      * @param pinPc PIN de la tarjeta inteligente */
     public VerifyApduCommand(final byte cla, final PasswordCallback pinPc) {
         super(
-    		cla,						   // CLA
-    		VerifyApduCommand.INS_VERIFY,  // INS
-    		(byte)0x00, 				   // P1
-    		(byte)0x00,					   // P2
-    		new byte[] { (byte) 0x00 },    // Data
-    		null						   // Le
+    		cla,						  // CLA
+    		VerifyApduCommand.INS_VERIFY, // INS
+    		(byte)0x00, 				  // P1
+    		(byte)0x00,					  // P2
+    		new byte[] { (byte) 0x00 },   // Data
+    		null						  // Le
 		);
         if (pinPc == null) {
         	throw new IllegalArgumentException(
     			"No se puede verificar el titular con un PasswordCallback nulo" //$NON-NLS-1$
         	);
         }
-        this.pwc = pinPc;
+        pwc = pinPc;
     }
 
-    /** {@inheritDoc} */
     @Override
     public byte[] getData() {
-        final char[] p = this.pwc.getPassword();
-        final byte[] k = new byte[p.length];
+        final char[] pass = pwc.getPassword();
+        final byte[] k = new byte[pass.length];
         for (int i=0; i<k.length;i++) {
-            k[i] = (byte) p[i];
+            k[i] = (byte) pass[i];
         }
         for (int i=0;i<k.length;i++) {
-            p[i] = '\0';
+            pass[i] = '\0';
         }
         return k;
     }

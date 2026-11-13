@@ -51,34 +51,31 @@ import es.gob.jmulticard.asn1.der.Sequence;
  *  }
  *  Identifier ::= OCTET STRING (SIZE (0..pkcs15-ub-identifier))
  * </pre>
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s
  * @author Gonzalo Henr&iacute;quez Manzano. */
 public final class CommonCertificateAttributes extends Sequence {
 
     /** Construye un objeto ASN&#46;1 <i>CommonCertificateAttributes</i>. */
 	public CommonCertificateAttributes() {
         super(
-    		new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					Identifier.class,
-					false
-				)
-			}
+			new OptionalDecoderObjectElement(
+				Identifier.class,
+				false
+			)
 		);
     }
 
     /** Obtiene el identificador de este <i>CommonCertificateAttributes</i>.
      * @return Identificador del <i>CommonCertificateAttributes</i> */
     public byte[] getId() {
-        if (this.getElementAt(0) == null) {
+        if (getElementAt(0) == null) {
         	throw new IllegalStateException("No existe el identificador dentro del objeto"); //$NON-NLS-1$
         }
-        return ((OctectString) this.getElementAt(0)).getOctectStringByteValue();
+        return ((OctectString) getElementAt(0)).getOctectStringByteValue();
     }
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
     	return HexUtils.hexify(getId(), false);
     }
-
 }

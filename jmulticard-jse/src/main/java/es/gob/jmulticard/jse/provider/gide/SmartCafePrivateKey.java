@@ -59,30 +59,28 @@ public final class SmartCafePrivateKey implements RSAPrivateKey {
 	/** Identificador de la clave. */
 	private final int id;
 
-	private final CryptoCard card;
+	/** Instancia de la tarjeta donde reside la clave. */
+	private final transient CryptoCard card;
 
 	/** Crea una clave privada de una tarjeta G&amp;D SmartCafe con Applet PKCS#15.
 	 * @param keyReference Referencia a la clave privada.
 	 * @param cryptoCard Tarjeta sobre la que crear la clave. */
 	SmartCafePrivateKey(final SmartCafePrivateKeyReference keyReference,
 			            final SmartCafePkcs15Applet cryptoCard) {
-		this.id = keyReference.getKeyOrdinal();
-		this.card = cryptoCard;
+		id = keyReference.getKeyOrdinal();
+		card = cryptoCard;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getAlgorithm() {
 		return "RSA"; //$NON-NLS-1$
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public byte[] getEncoded() {
 		return null;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getFormat() {
 		return null;
@@ -91,36 +89,38 @@ public final class SmartCafePrivateKey implements RSAPrivateKey {
 	/** Recupera el identificador de la clave.
 	 * @return Identificador de la clave. */
 	int getId() {
-		return this.id;
+		return id;
 	}
 
-	/** M&eacute;todo no soportado. */
+	/** No soportado. */
 	@Override
 	public BigInteger getModulus() {
 		throw new UnsupportedOperationException();
 	}
 
-	/** M&eacute;todo no soportado. */
+	/** No soportado. */
 	@Override
 	public BigInteger getPrivateExponent() {
 		throw new UnsupportedOperationException();
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String toString() {
-		return "Clave privada para G&D SmartCafe (con Applet PKCS#15) con ordinal " + this.id; //$NON-NLS-1$
+		return "Clave privada para G&D SmartCafe (con Applet PKCS#15) con ordinal " + id; //$NON-NLS-1$
 	}
 
-	@SuppressWarnings({ "static-method", "unused" })
-	private void writeObject(final ObjectOutputStream out) throws IOException {
+	/** Serializaci&oacute;n no soportada, lanza un <code>NotSerializableException</code>.
+	 * @param outStream No se usa.
+	 * @throws IOException No se lanza, siempre lanza un <code>NotSerializableException</code>. */
+	@SuppressWarnings({ "static-method" })
+	private void writeObject(final ObjectOutputStream outStream) throws IOException {
 		throw new NotSerializableException();
 	}
 
 	/** Obtiene la tarjeta a la que pertenece esta clave.
 	 * @return Tarjeta a la que pertenece esta clave. */
 	public CryptoCard getCryptoCard() {
-		return this.card;
+		return card;
 	}
 
 }

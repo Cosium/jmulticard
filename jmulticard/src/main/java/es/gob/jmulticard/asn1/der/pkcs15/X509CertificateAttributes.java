@@ -59,30 +59,29 @@ import es.gob.jmulticard.asn1.der.x509.RdnSequence;
  *    rdnSequence RDNSequence
  *  }
  * </pre>
- * @author Gonzalo Henr&iacute;quez Manzano */
+ * @author Gonzalo Henr&iacute;quez Manzano
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class X509CertificateAttributes extends Sequence {
 
 	/** Crea un objeto ASN&#46;1 PKCS#15 <i>X509CertificateAttributes</i>. */
 	public X509CertificateAttributes() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					Path.class,
-					false
-				),
-				new OptionalDecoderObjectElement(
-					RdnSequence.class,
-					true
-				),
-				new OptionalDecoderObjectElement(
-					CertificateIssuerContextSpecific.class,
-					true
-				),
-				new OptionalDecoderObjectElement(
-					DerInteger.class,
-					true
-				)
-			}
+			new OptionalDecoderObjectElement(
+				Path.class,
+				false
+			),
+			new OptionalDecoderObjectElement(
+				RdnSequence.class,
+				true
+			),
+			new OptionalDecoderObjectElement(
+				CertificateIssuerContextSpecific.class,
+				true
+			),
+			new OptionalDecoderObjectElement(
+				DerInteger.class,
+				true
+			)
 		);
 	}
 
@@ -148,7 +147,6 @@ public final class X509CertificateAttributes extends Sequence {
     	return null;
     }
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
     	return "Atributos del certificado\n" + //$NON-NLS-1$
@@ -157,5 +155,4 @@ public final class X509CertificateAttributes extends Sequence {
 			(getIssuer() != null ? "\n Emisor: " + getIssuer() : "") + //$NON-NLS-1$ //$NON-NLS-2$
 			(getSerialNumber() != null ? "\n Numero de serie: " + getSerialNumber().toString() : ""); //$NON-NLS-1$ //$NON-NLS-2$
     }
-
 }
