@@ -49,7 +49,7 @@ import es.gob.jmulticard.asn1.Tlv;
 import es.gob.jmulticard.asn1.TlvException;
 
 /** Tipo ASN&#46;1 <i>Sequence</i>.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public abstract class Sequence extends DecoderObject {
 
     /** Tipo ASN&#46;1 <i>Sequence</i>. */
@@ -59,54 +59,58 @@ public abstract class Sequence extends DecoderObject {
 
     private final OptionalDecoderObjectElement[] elementsTypes;
 
-    protected int getElementCount() {
-    	return this.elements.size();
+    /** Obtiene el n&uacute;mero de elementos que contiene la secuencia.
+     * @return N&uacute;mero de elementos que contiene la secuencia. */
+    protected final int getElementCount() {
+    	return elements.size();
     }
 
     /** Construye un tipo ASN&#46;1 <i>Sequence</i>.
      * Un <i>Sequence</i> contiene una secuencia de tipos ASN&#46;1 (que pueden ser distintos).
      * @param types Tipos (etiquetas) de objetos ASN&#46;1 (cero a n elementos) que va a contener la secuencia. El orden es relevante. */
-	protected Sequence(final OptionalDecoderObjectElement[] types) {
-        super();
+	protected Sequence(final OptionalDecoderObjectElement... types) {
         if (types == null) {
             throw new IllegalArgumentException();
         }
-        this.elementsTypes = new OptionalDecoderObjectElement[types.length];
-        System.arraycopy(types, 0, this.elementsTypes, 0, types.length);
+        elementsTypes = new OptionalDecoderObjectElement[types.length];
+        System.arraycopy(types, 0, elementsTypes, 0, types.length);
     }
 
     @Override
-    protected void decodeValue() throws Asn1Exception, TlvException {
-        final Tlv mainTlv = new Tlv(getRawDerValue());
+    protected final void decodeValue() throws Asn1Exception, TlvException {
+        final Tlv mainTlv = new Tlv(getBytes());
         checkTag(mainTlv.getTag());
         int offset = 0;
         Tlv tlv;
         byte[] remainingBytes;
         DecoderObject tmpDo;
         final byte[] rawValue = mainTlv.getValue();
-        for (int i = 0; i < this.elementsTypes.length; i++) {
+        for (int i = 0; i < elementsTypes.length; i++) {
             remainingBytes = new byte[rawValue.length - offset];
             System.arraycopy(rawValue, offset, remainingBytes, 0, remainingBytes.length);
             try {
             	tlv = new Tlv(remainingBytes);
-            	tmpDo = this.elementsTypes[i].getElementType().getConstructor().newInstance();
+            	tmpDo = elementsTypes[i].getElementType().getConstructor().newInstance();
             	tmpDo.checkTag(tlv.getTag());
-                tmpDo.setDerValue(tlv.getBytes());
+                tmpDo.setDerValue(
+            		tlv.getBytes()
+        		);
             }
             catch(final Exception e) {
-            	if (this.elementsTypes[i].isOptional()) {
+            	if (elementsTypes[i].isOptional()) {
                 	// Como no ha avanzado el offset, se reutilizara el tipo en el proximo elemento
             		continue;
             	}
-            	throw new Asn1Exception("Error en el elemento " + i + " (" + this.elementsTypes[i].getElementType().getName() + ") de la secuencia ASN.1: " + e, e); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+            	throw new Asn1Exception(
+        			"Error en el elemento " + i + " (" + elementsTypes[i].getElementType().getName() + ") de la secuencia ASN.1", e //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    			);
             }
             // El offset se avanza antes del continue de la opcionalidad
             offset = offset + tlv.getBytes().length;
-            this.elements.add(tmpDo);
+            elements.add(tmpDo);
         }
     }
 
-    /** {@inheritDoc} */
     @Override
     protected byte getDefaultTag() {
         return TAG_SEQUENCE;
@@ -116,7 +120,7 @@ public abstract class Sequence extends DecoderObject {
      * @param index Posici&oacute;n del elemento a recuperar.
      * @return Un objeto de tipo <code>DecoderObject</code> que contiene el TLV deseado.
      * @throws IndexOutOfBoundsException Si el indice indicado no pertenece al rango de la secuencia. */
-    protected DecoderObject getElementAt(final int index) {
-        return this.elements.get(index);
+    public final DecoderObject getElementAt(final int index) {
+        return elements.get(index);
     }
 }

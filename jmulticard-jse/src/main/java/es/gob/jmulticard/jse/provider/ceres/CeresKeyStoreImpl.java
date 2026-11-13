@@ -3,7 +3,6 @@ package es.gob.jmulticard.jse.provider.ceres;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.PasswordProtection;
@@ -13,6 +12,7 @@ import java.security.KeyStoreSpi;
 import java.security.PrivateKey;
 import java.security.ProviderException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
@@ -24,69 +24,73 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.x500.X500Principal;
 
-import es.gob.jmulticard.JseCryptoHelper;
-import es.gob.jmulticard.apdu.connection.ApduConnection;
+import es.gob.jmulticard.HexUtils;
 import es.gob.jmulticard.card.PrivateKeyReference;
 import es.gob.jmulticard.card.fnmt.ceres.Ceres;
 import es.gob.jmulticard.card.fnmt.ceres.CeresPrivateKeyReference;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.crypto.BcCryptoHelper;
+import es.gob.jmulticard.jse.provider.CachePasswordCallback;
+import es.gob.jmulticard.jse.provider.CardPasswordCallback;
+import es.gob.jmulticard.jse.provider.JMultiCardProviderMessages;
 
 /** Implementaci&oacute;n del SPI <code>KeyStore</code> para tarjeta FNMT-RCM-CERES.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class CeresKeyStoreImpl extends KeyStoreSpi {
 
-    private static List<String> userCertAliases = null;
+	private static final Logger LOGGER = Logger.getLogger(CeresKeyStoreImpl.class.getName());
+
+    private List<String> userCertAliases = null;
 
     private Ceres cryptoCard = null;
 
     private void loadAliases() {
-    	final String[] aliases = this.cryptoCard.getAliases();
+    	final String[] aliases = cryptoCard.getAliases();
     	userCertAliases = new ArrayList<>(aliases.length);
-    	for (final String alias : aliases) {
-    		userCertAliases.add(alias);
-    	}
+    	Collections.addAll(userCertAliases, aliases);
     }
 
-    /** {@inheritDoc} */
     @Override
     public Enumeration<String> engineAliases() {
         return Collections.enumeration(userCertAliases);
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineContainsAlias(final String alias) {
         return userCertAliases.contains(alias);
     }
 
-    /** {@inheritDoc} */
     @Override
     public Certificate engineGetCertificate(final String alias) {
     	if (!engineContainsAlias(alias)) {
     		return null;
     	}
-        return this.cryptoCard.getCertificate(alias);
+        return cryptoCard.getCertificate(alias);
     }
 
-    /** {@inheritDoc} */
     @Override
-    public String engineGetCertificateAlias(final Certificate cert) {
-        if (!(cert instanceof X509Certificate)) {
+    public String engineGetCertificateAlias(final Certificate otherCert) {
+        if (!(otherCert instanceof X509Certificate)) {
             return null;
         }
-        final BigInteger serial = ((X509Certificate) cert).getSerialNumber();
-        final X500Principal principal = ((X509Certificate) cert).getIssuerX500Principal();
         for (final String alias : userCertAliases) {
-        	final X509Certificate c = (X509Certificate) engineGetCertificate(alias);
-            if (c.getSerialNumber() == serial && principal.equals(principal)) {
-                return alias;
-            }
+        	final X509Certificate myCert = (X509Certificate) engineGetCertificate(alias);
+            try {
+				if (myCert != null && HexUtils.arrayEquals(otherCert.getEncoded(), myCert.getEncoded())) {
+				    return alias;
+				}
+			}
+            catch (final CertificateEncodingException e) {
+            	LOGGER.warning(
+        			"No se han podido comparar certificados: " + e //$NON-NLS-1$
+    			);
+				return null;
+			}
         }
         return null;
     }
 
-    /** {@inheritDoc} */
     @Override
     public Certificate[] engineGetCertificateChain(final String alias) {
     	if (!engineContainsAlias(alias)) {
@@ -97,37 +101,37 @@ public final class CeresKeyStoreImpl extends KeyStoreSpi {
 		};
     }
 
-    /** {@inheritDoc} */
     @Override
     public Key engineGetKey(final String alias, final char[] password) {
     	if (!engineContainsAlias(alias)) {
     		return null;
     	}
 
-    	// No permitimos PIN nulo, si llega nulo pedimos por dialogo grafico
+    	// No permitimos PIN nulo, si llega nulo pedimos por callback
     	if (password != null) {
-    		this.cryptoCard.setPasswordCallback(
+    		cryptoCard.setPasswordCallback(
 				new CachePasswordCallback(password)
 			);
     	}
-        final PrivateKeyReference pkRef = this.cryptoCard.getPrivateKey(alias);
+        final PrivateKeyReference pkRef = cryptoCard.getPrivateKey(alias);
 		if (!(pkRef instanceof CeresPrivateKeyReference)) {
-			throw new ProviderException("La clave obtenida de la tarjeta no es del tipo esperado, se ha obtenido: " + pkRef.getClass().getName()); //$NON-NLS-1$
+			throw new ProviderException(
+				"La clave obtenida de la tarjeta no es del tipo esperado, se ha obtenido: " + pkRef.getClass().getName() //$NON-NLS-1$
+			);
 		}
 		return new CeresPrivateKey(
 			(CeresPrivateKeyReference) pkRef,
-			this.cryptoCard,
+			cryptoCard,
 			((RSAPublicKey)engineGetCertificate(alias).getPublicKey()).getModulus()
 		);
     }
 
-    /** {@inheritDoc} */
     @Override
     public KeyStore.Entry engineGetEntry(final String alias,
     		                             final ProtectionParameter protParam) {
     	if (protParam instanceof KeyStore.PasswordProtection) {
 	    	final PasswordCallback pwc = new CachePasswordCallback(((KeyStore.PasswordProtection)protParam).getPassword());
-			this.cryptoCard.setPasswordCallback(pwc);
+			cryptoCard.setPasswordCallback(pwc);
     	}
     	if (!engineContainsAlias(alias)) {
     		return null;
@@ -139,14 +143,12 @@ public final class CeresKeyStoreImpl extends KeyStoreSpi {
     	return new PrivateKeyEntry(key, engineGetCertificateChain(alias));
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineIsCertificateEntry(final String alias) {
     	// Solo se soportan certificados con clave privada
         return false;
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineIsKeyEntry(final String alias) {
         return userCertAliases.contains(alias);
@@ -156,7 +158,6 @@ public final class CeresKeyStoreImpl extends KeyStoreSpi {
     	return CeresProvider.getDefaultApduConnection();
     }
 
-    /** {@inheritDoc} */
     @Override
     public void engineLoad(final KeyStore.LoadStoreParameter param) throws IOException {
     	if (param != null) {
@@ -165,76 +166,63 @@ public final class CeresKeyStoreImpl extends KeyStoreSpi {
     			if (((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler() == null) {
     				throw new IllegalArgumentException("El CallbackHandler no puede ser nulo"); //$NON-NLS-1$
     			}
-    			this.cryptoCard = new Ceres(
+    			cryptoCard = new Ceres(
 					CeresProvider.getDefaultApduConnection(),
-					new JseCryptoHelper()
+					new BcCryptoHelper()
 				);
-    			this.cryptoCard.setCallbackHandler(((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler());
+    			cryptoCard.setCallbackHandler(((KeyStore.CallbackHandlerProtection) pp).getCallbackHandler());
     		}
     		else if (pp instanceof KeyStore.PasswordProtection) {
-    			final PasswordCallback pwc = new CeresPasswordCallback((PasswordProtection) pp);
-    			this.cryptoCard = new Ceres(
-					CeresProvider.getDefaultApduConnection(),
-					new JseCryptoHelper()
+    			final PasswordCallback pwc = new CardPasswordCallback(
+					(PasswordProtection) pp,
+					JMultiCardProviderMessages.getString("Ceres430KeyStoreImpl.0") //$NON-NLS-1$
 				);
-    			this.cryptoCard.setPasswordCallback(pwc);
+    			cryptoCard = new Ceres(
+					CeresProvider.getDefaultApduConnection(),
+					new BcCryptoHelper()
+				);
+    			cryptoCard.setPasswordCallback(pwc);
     		}
     		else {
-	       		Logger.getLogger("es.gob.jmulticard").warning( //$NON-NLS-1$
-	   				"Se ha proporcionado un LoadStoreParameter de tipo no soportado, se ignorara: " + (pp != null ? pp.getClass().getName() : "NULO") //$NON-NLS-1$ //$NON-NLS-2$
+    			LOGGER.warning(
+	   				"Se ha proporcionado un LoadStoreParameter de tipo no soportado, se ignorara: " + //$NON-NLS-1$
+	   					(pp != null ? pp.getClass().getName() : "NULO") //$NON-NLS-1$
 				);
     		}
     	}
     	else {
-	    	this.cryptoCard = new Ceres(
+	    	cryptoCard = new Ceres(
 				CeresProvider.getDefaultApduConnection(),
-				new JseCryptoHelper()
+				new BcCryptoHelper()
 			);
     	}
 
-    	userCertAliases = Arrays.asList(this.cryptoCard.getAliases());
+    	userCertAliases = Arrays.asList(cryptoCard.getAliases());
     }
 
-    /** {@inheritDoc} */
     @Override
     public void engineLoad(final InputStream stream, final char[] password) throws IOException {
         // Aqui se realiza el acceso e inicializacion de la tarjeta
-        this.cryptoCard = new Ceres(
+        cryptoCard = new Ceres(
     		getApduConnection(),
-    		new JseCryptoHelper()
+    		new BcCryptoHelper()
 		);
 
         // Precargamos los alias
         loadAliases();
     }
 
-    /** {@inheritDoc} */
     @Override
     public int engineSize() {
         return userCertAliases.size();
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean engineEntryInstanceOf(final String alias, final Class<? extends KeyStore.Entry> entryClass) {
         if (!engineContainsAlias(alias)) {
             return false;
         }
         return entryClass.equals(PrivateKeyEntry.class);
-    }
-
-    /** <code>PasswordCallbak</code> que almacena internamente y devuelve la contrase&ntilde;a con la que se
-     * construy&oacute; o la que se le establece posteriormente. */
-    private static final class CachePasswordCallback extends PasswordCallback {
-
-        private static final long serialVersionUID = 816457144215238935L;
-
-        /** Contruye una <code>Callback</code> con una contrase&ntilde;a pre-establecida.
-         * @param password Contrase&ntilde;a por defecto. */
-        CachePasswordCallback(final char[] password) {
-            super(">", false); //$NON-NLS-1$
-            setPassword(password);
-        }
     }
 
     // ******************************************
@@ -274,7 +262,7 @@ public final class CeresKeyStoreImpl extends KeyStoreSpi {
     /** Operaci&oacute;n no soportada. */
     @Override
     public Date engineGetCreationDate(final String alias) {
-    	Logger.getLogger("es.gob.jmulticard").warning( //$NON-NLS-1$
+    	LOGGER.warning(
 			"No se soporta la obtencion de fecha de creacion, se devuelve la fecha actual" //$NON-NLS-1$
 		);
         return new Date();

@@ -50,42 +50,27 @@ import es.gob.jmulticard.card.Location;
 import es.gob.jmulticard.card.dnie.DniePrivateKeyReference;
 
 /** Clave privada de un DNIe. La clase no contiene la clave privada en s&iacute;, sino
- * una referencia a ella y una referencia al propio DNIe, con el canal seguro
- * establecido.
+ * una referencia a ella y una referencia al propio DNIe, con el canal seguro establecido.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class DniePrivateKey implements RSAPrivateKey {
 
 	private static final long serialVersionUID = 4403051294889801855L;
 
-	private final CryptoCard dnie;
+	/** Referencia a la clave privada.*/
+	private final transient DniePrivateKeyReference dniPrivateKeyReference;
 
-	/** Identificador de la clave. */
-	private final byte[] id;
-
-	/** Ruta de la clave. */
-	private final Location path;
-
-	/** Etiqueta de la clave. */
-	private final String name;
-
-	/** Referencia interna de la clave. */
-	private final byte reference;
-
-	/** Tama&ntilde;o en bits de la clave privada. */
-	private final int keySize;
+	/** M&oacute;dulo de la clave privada.
+	 * Al ser la clave privada interna al DNI, este dato se obtiene de la p&uacute;blica (es igual). */
+	private final BigInteger modulus;
 
 	/** Crea una clave privada de DNIe.
-	 * @param keyReference Referencia a la clave privada del DNIe. */
-	DniePrivateKey(final DniePrivateKeyReference keyReference) {
-		this.dnie = keyReference.getDnieCard();
-		this.id = keyReference.getIdentifier();
-		this.path = keyReference.getKeyPath();
-		this.name = keyReference.getLabel();
-		this.reference = keyReference.getKeyReference();
-		this.keySize = keyReference.getKeyBitSize();
+	 * @param keyReference Referencia a la clave privada del DNIe.
+	 * @param mod M&oacute;dulo de la clave. */
+	public DniePrivateKey(final DniePrivateKeyReference keyReference, final BigInteger mod) {
+		this.dniPrivateKeyReference = keyReference;
+		this.modulus   = mod;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getAlgorithm() {
 		return "RSA"; //$NON-NLS-1$
@@ -93,17 +78,15 @@ public final class DniePrivateKey implements RSAPrivateKey {
 
 	/** Obtiene la tarjeta capaz de operar con esta clave.
 	 * @return Tarjeta capaz de operar con esta clave. */
-	CryptoCard getCryptoCard() {
-		return this.dnie;
+	public CryptoCard getCryptoCard() {
+		return this.dniPrivateKeyReference.getDnieCard();
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public byte[] getEncoded() {
 		return null;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getFormat() {
 		return null;
@@ -112,47 +95,54 @@ public final class DniePrivateKey implements RSAPrivateKey {
 	/** Recupera el identificador de la clave.
 	 * @return Identificador de la clave. */
 	byte[] getId() {
-		return this.id;
+		return this.dniPrivateKeyReference.getIdentifier();
 	}
 
-	/** M&eacute;todo no soportado. */
 	@Override
 	public BigInteger getModulus() {
-		throw new UnsupportedOperationException();
+		return this.modulus;
 	}
 
 	/** Recupera la ruta hacia la clave.
 	 * @return Ruta de la clave. */
 	Location getPath() {
-		return this.path;
+		return this.dniPrivateKeyReference.getKeyPath();
 	}
 
-	/** M&eacute;todo no soportado. */
+	/** No soportado. */
 	@Override
 	public BigInteger getPrivateExponent() {
 		throw new UnsupportedOperationException();
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String toString() {
-		return this.name;
+		return this.dniPrivateKeyReference.getLabel();
 	}
 
-	@SuppressWarnings({ "static-method", "unused" })
-	private void writeObject(final ObjectOutputStream out) throws IOException {
+	/** Serializaci&oacute;n no soportada, lanza un <code>NotSerializableException</code>.
+	 * @param outStream No se usa.
+	 * @throws IOException No se lanza, siempre lanza un <code>NotSerializableException</code>. */
+	@SuppressWarnings({ "static-method" })
+	private void writeObject(final ObjectOutputStream outStream) throws IOException {
 		throw new NotSerializableException();
 	}
 
-	/** Recupera la referencia de la clave.
-	 * @return Referencia de la clave. */
+	/** Recupera la referencia interna en tarjeta de la clave.
+	 * @return Referencia interna en tarjeta de la clave. */
 	byte getKeyReference() {
-		return this.reference;
+		return this.dniPrivateKeyReference.getKeyReference();
 	}
 
 	/** Obtiene el tam&ntilde;o en bits de la clave.
 	 * @return Tam&ntilde;o en bits de la clave. */
 	int getKeyBitSize() {
-		return this.keySize;
+		return this.dniPrivateKeyReference.getKeyBitSize();
+	}
+
+	/** Obtiene la referencia de la clave privada.
+	 * @return Referencia de la clave privada. */
+	public DniePrivateKeyReference getDniePrivateKeyReference() {
+		return this.dniPrivateKeyReference;
 	}
 }

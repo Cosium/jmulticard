@@ -44,7 +44,6 @@ import java.math.BigInteger;
 import es.gob.jmulticard.asn1.DecoderObject;
 import es.gob.jmulticard.asn1.der.ContextSpecific;
 
-
 /** Tipo PKCS#15 ASN&#46;1 <i>CertificateObject</i> (<i>CertificateInfoObject</i> en ISO 7816-15).
  *  <pre>
  *    CertificateObject {CertAttributes} ::= PKCS15Object {
@@ -87,7 +86,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
  *    }
  *
  *  </pre>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public class CertificateObject extends Pkcs15Object {
 
 	/** Crea un objeto <i>CertificateObject</i>. */
@@ -105,8 +104,8 @@ public class CertificateObject extends Pkcs15Object {
      * @param subclassAttributes Tipo de los Atributos espec&iacute;ficos de la subclase general del objeto
      * @param typeAttributes Tipo de los Atributos espec&iacute;ficos del tipo concreto del objeto */
 	protected CertificateObject(final Class<? extends DecoderObject> classAttributes,
-			               final Class<? extends ContextSpecific> subclassAttributes,
-			               final Class<? extends ContextSpecific> typeAttributes) {
+			                    final Class<? extends ContextSpecific> subclassAttributes,
+			                    final Class<? extends ContextSpecific> typeAttributes) {
         super(classAttributes, subclassAttributes, typeAttributes);
     }
 
@@ -152,12 +151,10 @@ public class CertificateObject extends Pkcs15Object {
 		return getCommonObjectAttributes().getLabel();
 	}
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
     	return getTypeAttributes().toString() +
 			"\nAlias del certificado: " + getCommonObjectAttributes().getLabel() + //$NON-NLS-1$
-			"\nIdentificador del certificado: " + getClassAttributes().toString(); //$NON-NLS-1$
+				"\nIdentificador del certificado: " + getClassAttributes().toString(); //$NON-NLS-1$
     }
-
 }

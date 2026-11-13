@@ -49,18 +49,16 @@ import es.gob.jmulticard.asn1.der.Sequence;
  *    algorithm OBJECT IDENTIFIER
  *   }
  * </pre>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class AlgorithmIdentifer extends Sequence {
 
 	/** Construye un objeto ASN&#46;1 PKCS#1 <i>AlgorithmIdentifer</i>. */
 	public AlgorithmIdentifer() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					ObjectIdentifier.class,
-					false
-				)
-			}
+			new OptionalDecoderObjectElement(
+				ObjectIdentifier.class,
+				false
+			)
 		);
 	}
 
@@ -68,5 +66,4 @@ public final class AlgorithmIdentifer extends Sequence {
 	public String toString() {
 		return getElementAt(0).toString();
 	}
-
 }

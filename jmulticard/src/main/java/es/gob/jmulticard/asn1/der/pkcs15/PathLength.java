@@ -47,7 +47,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
 import es.gob.jmulticard.asn1.der.Record;
 
 /** Tipo ASN&#46;1 entero de contexto espec&iacute;fico.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class PathLength extends ContextSpecific {
 
 	private static final byte TAG = (byte) 0x80;
@@ -55,7 +55,7 @@ public final class PathLength extends ContextSpecific {
 	private Integer value = null;
 
 	int getIntValue() {
-		return this.value.intValue();
+		return value.intValue();
 	}
 
 	/** Construye un objeto ASN&#46;1 entero de contexto espec&iacute;fico. */
@@ -65,16 +65,15 @@ public final class PathLength extends ContextSpecific {
 
 	@Override
     protected void decodeValue() throws TlvException {
-		this.value = Integer.valueOf(String.valueOf(HexUtils.getUnsignedInt(new Tlv(this.getRawDerValue()).getValue(), 0)));
+		value = Integer.valueOf(String.valueOf(HexUtils.getUnsignedInt(new Tlv(getBytes()).getValue(), 0)));
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
 			throw new Asn1Exception(
 				"PathLength esperaba una etiqueta especifica de contexto " + HexUtils.hexify(new byte[] { TAG }, false) + //$NON-NLS-1$
-				" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
+					" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
 			);
 		}
 	}

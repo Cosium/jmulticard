@@ -42,14 +42,14 @@ package es.gob.jmulticard.asn1.der.pkcs15;
 import es.gob.jmulticard.asn1.der.BitString;
 
 /** Objeto <i>CommonObjectFlags</i> ASN&#46;1 de PKCS#15.
- *
  * <pre>
  *  CommonObjectFlags ::= BIT STRING {
  *    private (0),
  *    modifiable (1)
  *  }
  * </pre>
- * @author Gonzalo Henr&iacute;quez Manzano */
+ * @author Gonzalo Henr&iacute;quez Manzano
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class CommonObjectFlags extends BitString {
     // Sin distincion respecto a BitString
 }

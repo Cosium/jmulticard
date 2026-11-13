@@ -63,7 +63,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
  *    PrivateRsaKeyAttributes
  *  }
  * </pre>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public class PrivateKeyObject extends Pkcs15Object {
 
     /** Construye un tipo PrivateKeyObject ASN&#46;1.
@@ -105,31 +105,36 @@ public class PrivateKeyObject extends Pkcs15Object {
 		return ((PrivateRsaKeyAttributesContextSpecific)getTypeAttributes()).getPath();
 	}
 
+	/** Obtiene la longitud de la clave privada.
+	 * @return Longitud de la clave privada. */
 	int getKeyLength() {
 		return ((PrivateRsaKeyAttributesContextSpecific)getTypeAttributes()).getKeyLength();
 	}
 
+	/** Obtiene el <code>Principal</code> X&#46;509 de la clave privada.
+	 * @return <code>Principal</code> X&#46;509 de la clave privada. */
 	X500Principal getKeyPrincipal() {
 		final Object o = getSubclassAttributes();
 		if (o instanceof CommonPrivateKeyAttributesContextSpecific) {
-			return ((CommonPrivateKeyAttributesContextSpecific)o).getKeyRdn();
+			return ((CommonPrivateKeyAttributesContextSpecific)o).getKeyPrincipal();
 		}
 		return null;
 	}
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
     	return "Nombre de la clave privada: " + getCommonObjectAttributes().getLabel() + //$NON-NLS-1$
 			(getSubclassAttributes() != null ?
-			 "\n" + ((CommonPrivateKeyAttributesContextSpecific)getSubclassAttributes()).getKeyRdn() : //$NON-NLS-1$
+			 "\n" + ((CommonPrivateKeyAttributesContextSpecific)getSubclassAttributes()).getKeyPrincipal() : //$NON-NLS-1$
 				 ""); //$NON-NLS-1$
     }
 
 	/** Obtiene la referencia de la clave.
 	 * @return Referencia de la clave. */
 	public byte getKeyReference() {
-		return ((CommonKeyAttributes)getClassAttributes()).getReference().getIntegerValue().byteValue();
+		final Reference ref = ((CommonKeyAttributes)getClassAttributes()).getReference();
+		// Usamos directamente los octetos internos para avitar problemas de BigInteger en J2Obc
+		final byte[] referenceRawBytes = ref.getBytes();
+		return referenceRawBytes[referenceRawBytes.length -1];
 	}
-
 }

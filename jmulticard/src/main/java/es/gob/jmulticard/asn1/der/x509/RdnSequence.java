@@ -44,7 +44,7 @@ import javax.security.auth.x500.X500Principal;
 import es.gob.jmulticard.asn1.der.SequenceOf;
 
 /** Tipo ASN&#46;1 X&#46;509 <i>RdnSequence</i> (secuencia de <i>RelativeDistinguishedName</i>).
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class RdnSequence extends SequenceOf {
 
 	/** Construye un objeto ASN&#46;1 X&#46;509 <i>RdnSequence</i> (secuencia de <i>RelativeDistinguishedName</i>). */
@@ -52,18 +52,17 @@ public final class RdnSequence extends SequenceOf {
 		super(RelativeDistinguishedName.class);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public String toString() {
-		final StringBuffer sb = new StringBuffer();
+		final StringBuilder stringBuilder = new StringBuilder();
 		final int lastIndex = getElementCount();
 		for (int i=0; i<lastIndex;i++) {
-			sb.append(getElementAt(i));
+			stringBuilder.append(getElementAt(i));
 			if (i != lastIndex-1) {
-				sb.append(", "); //$NON-NLS-1$
+				stringBuilder.append(", "); //$NON-NLS-1$
 			}
 		}
-		return sb.toString();
+		return stringBuilder.toString();
 	}
 
 	/** Obtiene el <i>X&#46;500 Principal</i> de la clave.
@@ -71,5 +70,4 @@ public final class RdnSequence extends SequenceOf {
 	public X500Principal getKeyprincipal() {
 		return new X500Principal(toString());
 	}
-
 }

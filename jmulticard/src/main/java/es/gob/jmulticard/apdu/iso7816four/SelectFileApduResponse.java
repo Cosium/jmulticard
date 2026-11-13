@@ -44,51 +44,56 @@ import es.gob.jmulticard.apdu.Apdu;
 import es.gob.jmulticard.apdu.ResponseApdu;
 
 /** APDU respuesta al comando APDU ISO 7816-4 de selecci&oacute;n de fichero.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class SelectFileApduResponse extends ResponseApdu {
 
+	/** Nombre del DF que contiene el EF. */
     private byte[] dfName = null;
+
+    /** Identificador del EF seleccionado. */
     private byte[] fileId = null;
+
+    /** Longitud (en octetos) del EF seleccionado. */
     private byte[] fileLength = null;
 
     /** Construye una APDU respuesta al comando APDU ISO 7816-4 de selecci&oacute;n de fichero.
      * @param apduResponse APDU devuelta por la operaci&oacute;n de selecci&oacute;n de fichero. */
     public SelectFileApduResponse(final Apdu apduResponse) {
         super(apduResponse.getBytes());
-        this.decode();
+        decode();
     }
 
     private void decode() {
     	// Comprobamos que haya respuesta (getData().length > 0), ya que puede no devolver un FCI
-        if (this.isOk() && this.getData().length > 0) {
+        if (isOk() && getData().length > 0) {
             // Longitud del troncho.
-            final int length = this.getData()[1];
+            final int length = getData()[1];
 
             // El primer byte es 0x6F el segundo es la long. y los 2 ultimos son el sw. por eso length - 2.
-            if (this.getData().length - 2 == length) {
+            if (getData().length - 2 == length) {
                 int propInformationIndex = 2;
                 // Tamano del fichero
-                if (this.getData()[propInformationIndex] == (byte) 0x81) {
-                	final int lengthLength = this.getData()[++propInformationIndex];
-                	this.fileLength = this.getBytesFromData(++propInformationIndex, lengthLength);
+                if (getData()[propInformationIndex] == (byte) 0x81) {
+                	final int lengthLength = getData()[++propInformationIndex];
+                	fileLength = getBytesFromData(++propInformationIndex, lengthLength);
                 	propInformationIndex += lengthLength;
                 }
                 // FileID
-                if (this.getData()[propInformationIndex] == (byte) 0x81) {
-                	final int fileIdLength = this.getData()[++propInformationIndex];
-                	this.fileId = this.getBytesFromData(++propInformationIndex, fileIdLength);
+                if (getData()[propInformationIndex] == (byte) 0x81) {
+                	final int fileIdLength = getData()[++propInformationIndex];
+                	fileId = getBytesFromData(++propInformationIndex, fileIdLength);
                 	propInformationIndex += fileIdLength;
                 }
                 // Nombre del DF
-                if (this.getData()[propInformationIndex] == (byte) 0x84) {
-                    final int nameLength = this.getData()[++propInformationIndex];
-                    this.dfName = this.getBytesFromData(++propInformationIndex, nameLength);
+                if (getData()[propInformationIndex] == (byte) 0x84) {
+                    final int nameLength = getData()[++propInformationIndex];
+                    dfName = getBytesFromData(++propInformationIndex, nameLength);
                     propInformationIndex += nameLength;
                 }
                 // El campo FCI propietario 0x85 en tarjetas FNMT contiene el FileID y el tamano
-                if (this.getData()[propInformationIndex] == (byte) 0x85 && this.getData()[propInformationIndex + 1] == 10) {
-                    this.fileId = this.getBytesFromData(propInformationIndex + 3, 2);
-                    this.fileLength = this.getBytesFromData(propInformationIndex + 5, 2);
+                if (getData()[propInformationIndex] == (byte) 0x85 && getData()[propInformationIndex + 1] == 10) {
+                    fileId = getBytesFromData(propInformationIndex + 3, 2);
+                    fileLength = getBytesFromData(propInformationIndex + 5, 2);
                 }
             }
         }
@@ -96,49 +101,48 @@ public final class SelectFileApduResponse extends ResponseApdu {
 
     private byte[] getBytesFromData(final int offset, final int length) {
         final byte[] result = new byte[length];
-        System.arraycopy(this.getData(), offset, result, 0, length);
+        System.arraycopy(getData(), offset, result, 0, length);
         return result;
     }
 
     /** Obtiene el nombre del DF.
-     * @return Nombre del DF */
+     * @return Nombre del DF. */
     byte[] getDfName() {
-    	if (this.dfName != null) {
-	        final byte[] out = new byte[this.dfName.length];
-	        System.arraycopy(this.dfName, 0, out, 0, this.dfName.length);
+    	if (dfName != null) {
+	        final byte[] out = new byte[dfName.length];
+	        System.arraycopy(dfName, 0, out, 0, dfName.length);
 	        return out;
     	}
     	return null;
     }
 
     /** Devuelve el identificador del fichero seleccionado.
-     * @return Identificador del fichero */
+     * @return Identificador del fichero. */
     byte[] getFileId() {
-    	if (this.fileId != null) {
-	        final byte[] out = new byte[this.fileId.length];
-	        System.arraycopy(this.fileId, 0, out, 0, this.fileId.length);
+    	if (fileId != null) {
+	        final byte[] out = new byte[fileId.length];
+	        System.arraycopy(fileId, 0, out, 0, fileId.length);
 	        return out;
     	}
     	return null;
     }
 
     /** Devuelve la longitud del fichero seleccionado.
-     * @return Longitud del fichero */
+     * @return Longitud del fichero. */
     public int getFileLength() {
-    	if (this.fileLength != null) {
-    		return (this.fileLength[0] & 0xFF) << 8 | this.fileLength[1] & 0xFF;
+    	if (fileLength != null) {
+    		return (fileLength[0] & 0xFF) << 8 | fileLength[1] & 0xFF;
     	}
     	// Un DF puede no tener tamano en el FCI
     	return 0;
     }
 
-    /** {@inheritDoc} */
     @Override
     public boolean isOk() {
-    	if (this.getData().length == 0) {
+    	if (getData().length == 0) {
     		return super.isOk();
     	}
-        return super.isOk() && this.getData()[0] == (byte) 0x6F && this.getData().length > 2;
+        return super.isOk() && getData()[0] == (byte) 0x6F && getData().length > 2;
     }
 
     @Override
@@ -155,5 +159,4 @@ public final class SelectFileApduResponse extends ResponseApdu {
     	sb.append(" Longitud del fichero: " + getFileLength()); //$NON-NLS-1$
     	return sb.toString();
     }
-
 }

@@ -46,7 +46,7 @@ import es.gob.jmulticard.asn1.Asn1Exception;
 import es.gob.jmulticard.asn1.der.ContextSpecific;
 
 /** Objeto ASN&#46;1 de contexto espec&iacute;fico del <i>X509CertificateAttributes</i>.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class X509CertificateAttributesContextSpecific extends ContextSpecific {
 
 	private static final byte TAG = (byte) 0xA1;
@@ -56,18 +56,16 @@ public final class X509CertificateAttributesContextSpecific extends ContextSpeci
 		super(X509CertificateAttributes.class);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
 			throw new Asn1Exception(
 				"X509CertificateAttributesContextSpecific esperaba una etiqueta especifica de contexto " + HexUtils.hexify(new byte[] { TAG }, false) + //$NON-NLS-1$
-				" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
+					" pero ha encontrado " + HexUtils.hexify(new byte[] { tag }, false) //$NON-NLS-1$
 			);
 		}
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public String toString() {
 		return getObject().toString();

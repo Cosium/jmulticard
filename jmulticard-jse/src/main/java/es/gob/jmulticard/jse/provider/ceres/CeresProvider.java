@@ -3,8 +3,9 @@ package es.gob.jmulticard.jse.provider.ceres;
 import java.security.Provider;
 import java.security.ProviderException;
 
-import es.gob.jmulticard.apdu.connection.ApduConnection;
 import es.gob.jmulticard.card.fnmt.ceres.Ceres;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.jse.provider.ProviderUtil;
 
 /** Proveedor criptogr&aacute;fico JCA para tarjeta FNMT-RCM-CERES.
  * Crea dos servicios:
@@ -30,7 +31,7 @@ public final class CeresProvider extends Provider {
     private static final long serialVersionUID = -1046745919235177156L;
 
     private static final String INFO = "Proveedor para tarjeta FNMT-RCM-CERES"; //$NON-NLS-1$
-    private static final double VERSION = 0.1d;
+    private static final double VERSION = 0.2;
     private static final String NAME = "CeresJCAProvider"; //$NON-NLS-1$
 
     private static ApduConnection defaultConnection = null;
@@ -43,24 +44,28 @@ public final class CeresProvider extends Provider {
     	return defaultConnection;
     }
 
-    /** Crea un proveedor JCA para tarjeta FNMT-RCM-CERES con la conexi&oacute;n por defecto. */
+    /**
+     * Crea un proveedor JCA para tarjeta FNMT-RCM-CERES con la conexi&oacute;n por defecto.
+     */
     public CeresProvider() {
     	this(null);
     }
 
-    /** Crea un proveedor JCA para tarjeta FNMT-RCM-CERES.
-     * @param conn Conexi&oacute;n a usar para el env&iacute;o y recepci&oacute;n de APDU. */
+    /**
+     * Crea un proveedor JCA para tarjeta FNMT-RCM-CERES.
+     * @param conn Conexi&oacute;n a usar para el env&iacute;o y recepci&oacute;n de APDU.
+     */
     public CeresProvider(final ApduConnection conn) {
         super(NAME, VERSION, INFO);
 
         try {
 			defaultConnection = conn == null ?
-				new es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection() :
+				ProviderUtil.getDefaultConnection() :
 					conn;
 		}
         catch (final Exception e) {
 			throw new ProviderException(
-				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto: " + e, e //$NON-NLS-1$
+				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto", e //$NON-NLS-1$
 			);
 		}
 
@@ -70,7 +75,7 @@ public final class CeresProvider extends Provider {
 		}
         catch (final Exception e) {
         	throw new ProviderException(
-				"No se ha podido conectar con la tarjeta CERES: " + e, e //$NON-NLS-1$
+				"No se ha podido conectar con la tarjeta CERES", e //$NON-NLS-1$
 			);
 		}
 

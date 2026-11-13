@@ -42,97 +42,86 @@ package es.gob.jmulticard.card.cwa14890;
 import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 
-import es.gob.jmulticard.apdu.connection.ApduConnectionException;
+import es.gob.jmulticard.connection.ApduConnectionException;
 
-/** Interfaz con los m&eacute;todos necesarios para la operaci&oacute;n de las tarjetas
- * acordes a la especificaci&oacute;n CWA-14890.
- * @author Carlos Gamuci. */
+/** Tarjetas acordes a la especificaci&oacute;n
+ * <a href="https://www.dnielectronico.es/PDFs/cwa14890-02-2004-May.pdf">CWA-14890</a>.
+ * @author Carlos Gamuci
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public interface Cwa14890Card {
-
-    /** Verifica la CA intermedia del certificado de componente de la tarjeta.
-     * @throws CertificateException Cuando ocurre alg&uacute;n problema en la
-     *         validaci&oacute;n del certificado
-     * @throws IOException Cuando ocurre alg&uacute;n problema en la selecci&oacute;n
-     *         y lectura del certificado
-     * @throws SecurityException Si falla la validaci&oacute;n de la CA */
-    void verifyCaIntermediateIcc() throws CertificateException, IOException;
 
     /** Verifica el certificado de componente de la tarjeta.
      * @throws CertificateException Cuando ocurre alg&uacute;n problema en la
-     *         validaci&oacute;n del certificado
+     *         validaci&oacute;n del certificado.
      * @throws IOException Cuando ocurre alg&uacute;n problema en la selecci&oacute;n
-     *         y lectura del certificado
-     * @throws SecurityException Si falla la validaci&oacute;n del certificado */
+     *                     y lectura del certificado.
+     * @throws SecurityException Si falla la validaci&oacute;n del certificado. */
     void verifyIcc() throws CertificateException, IOException;
 
-    /** Recupera el certificado de componente codificado.
-     * @return Certificado codificado
+    /** Recupera la clave p&uacute;blica del certificado de componente.
+     * @return Clave p&uacute;blica del certificado de componente.
      * @throws IOException Cuando ocurre alg&uacute;n problema en la selecci&oacute;n
-     *         y lectura del certificado */
-    byte[] getIccCertEncoded() throws IOException;
+     *                     y lectura del certificado */
+    RSAPublicKey getIccCertPublicKey() throws IOException;
 
     /** Verifica que los certificados declarados por el controlador (certificados de
      * terminal) sean v&aacute;lidos para el uso de la tarjeta.
      * @param consts Clase de claves.
      * @throws ApduConnectionException Cuando ocurre alg&iacute;n error en la
-     *         comunicaci&oacute;n con la tarjeta
-     * @throws es.gob.jmulticard.apdu.connection.cwa14890.SecureChannelException Cuando ocurre alg&uacute;n error en la
-     *         verificaci&oacute;n de los certificados */
-    void verifyIfdCertificateChain(final Cwa14890PublicConstants consts) throws ApduConnectionException;
+     *         comunicaci&oacute;n con la tarjeta. */
+    void verifyIfdCertificateChain(Cwa14890PublicConstants consts) throws ApduConnectionException;
 
     /** Obtiene el mensaje de autenticaci&oacute;n interna de la tarjeta.
-     * @param randomIfd Bytes aleatorios generados
-     * @param chrCCvIfd CHR de la clave p&uacute;blica del certificado de terminal
-     * @return Mensaje cifrado con la clave privada de componente de la tarjeta
-     * @throws ApduConnectionException Cuando ocurre un error de comunicaci&oacute;n con la tarjeta */
-    byte[] getInternalAuthenticateMessage(final byte[] randomIfd, final byte[] chrCCvIfd) throws ApduConnectionException;
+     * @param randomIfd Bytes aleatorios generados.
+     * @param chrCCvIfd CHR de la clave p&uacute;blica del certificado de terminal.
+     * @return Mensaje cifrado con la clave privada de componente de la tarjeta.
+     * @throws ApduConnectionException Cuando ocurre un error de comunicaci&oacute;n con la tarjeta. */
+    byte[] getInternalAuthenticateMessage(byte[] randomIfd, byte[] chrCCvIfd) throws ApduConnectionException;
 
     /** Envia el mensaje de autenticaci&oacute;n externa.
-     * @param extAuthenticationData Mensaje de autenticaci&oacute;n externa
-     * @return {@code true} si la autenticaci&oacute;n finaliz&oacute; correctamente, {@code false} en caso contrario
+     * @param extAuthenticationData Mensaje de autenticaci&oacute;n externa.
+     * @return {@code true} si la autenticaci&oacute;n finaliz&oacute; correctamente, {@code false} en caso contrario.
      * @throws ApduConnectionException Cuando ocurre un error en la comunicaci&oacute;n con
-     *         la tarjeta */
-    boolean externalAuthentication(final byte[] extAuthenticationData) throws ApduConnectionException;
+     *                                 la tarjeta. */
+    boolean externalAuthentication(byte[] extAuthenticationData) throws ApduConnectionException;
 
-    /** Establece una clave p&uacute;blica y otra privada para la autenticaci&oacute;n
+    /** Establece una clave p&uacute;blica y otra privada para la autenticaci&oacute;n.
      * interna y externa de la tarjeta.
      * @param refPublicKey Referencia a la clave p&uacute;blica.
      * @param refPrivateKey Referencia a la clave privada.
-     * @throws es.gob.jmulticard.apdu.connection.cwa14890.SecureChannelException Cuando ocurre un error durante el proceso de autenticaci&oacute;n
      * @throws ApduConnectionException Cuando ocurre un error de comunicaci&oacute;n con la tarjeta. */
-    void setKeysToAuthentication(final byte[] refPublicKey, final byte[] refPrivateKey) throws ApduConnectionException;
+    void setKeysToAuthentication(byte[] refPublicKey, byte[] refPrivateKey) throws ApduConnectionException;
 
-    /** Solicita un desaf&iacute;o de 8 bytes a la tarjeta.
+    /** Solicita un desaf&iacute;o de 8 octetos a la tarjeta.
      * @return Array de 8 bytes aleatorios.
      * @throws ApduConnectionException Cuando ocurre un error de comunicaci&oacute;n con la tarjeta */
     byte[] getChallenge() throws ApduConnectionException;
 
     /** Recupera el n&uacute;mero de serie de la tarjeta.
-     * @return N&uacute;mero de serie
-     * @throws ApduConnectionException Cuando ocurre un error en la comunicaci&oacute;n con
-     *         la tarjeta */
+     * @return N&uacute;mero de serie.
+     * @throws ApduConnectionException Cuando ocurre un error en la comunicaci&oacute;n con la tarjeta. */
     byte[] getSerialNumber() throws ApduConnectionException;
 
     /** Recupera la referencia a la clave privada del certificado de componente.
      * @param consts Clase de claves.
      * @return Referencia a clave privada */
-    byte[] getRefIccPrivateKey(final Cwa14890PublicConstants consts);
+    byte[] getRefIccPrivateKey(Cwa14890PublicConstants consts);
 
     /** Recupera el CHR de la clave p&uacute;blica del certificado de terminal.
      * @param consts Clase de claves.
      * @return Referencia a clave p&uacute;blica */
-    byte[] getChrCCvIfd(final Cwa14890PublicConstants consts);
+    byte[] getChrCCvIfd(Cwa14890PublicConstants consts);
 
     /** Recupera la clave privada del certificado de componente del terminal.
      * @param consts Clase de claves privadas.
-     * @return Clave privada */
-    RSAPrivateKey getIfdPrivateKey(final Cwa14890PrivateConstants consts);
+     * @return Clave privada. */
+    RSAPrivateKey getIfdPrivateKey(Cwa14890PrivateConstants consts);
 
-    /** Obtiene la longitud, <u>en octetos</u>, de las claves RSA del certificado de
-     * comnponente del terminal.
+    /** Obtiene la longitud, <u>en octetos</u>, de las claves RSA del certificado de comnponente del terminal.
      * @param consts Clase de claves.
      * @return Longitud, <u>en octetos</u>, de las claves RSA del certificado de
      *         comnponente del terminal. */
-    int getIfdKeyLength(final Cwa14890PublicConstants consts);
+    int getIfdKeyLength(Cwa14890PublicConstants consts);
 }

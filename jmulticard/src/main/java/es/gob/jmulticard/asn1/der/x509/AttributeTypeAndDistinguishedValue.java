@@ -51,29 +51,25 @@ import es.gob.jmulticard.asn1.der.Utf8String;
  *   value UTF8String
  *  }
  * </pre>
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class AttributeTypeAndDistinguishedValue extends Sequence {
 
 	/** Construye un objeto ASN&#46;1 X&#46;500 <i>AttributeTypeAndDistinguishedValue</i>. */
 	public AttributeTypeAndDistinguishedValue() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					ObjectIdentifier.class,
-					false
-				),
-				new OptionalDecoderObjectElement(
-					Utf8String.class,
-					false
-				)
-			}
+			new OptionalDecoderObjectElement(
+				ObjectIdentifier.class,
+				false
+			),
+			new OptionalDecoderObjectElement(
+				Utf8String.class,
+				false
+			)
 		);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public String toString() {
 		return getElementAt(0).toString() + "=\"" + getElementAt(1).toString() + "\""; //$NON-NLS-1$ //$NON-NLS-2$
 	}
-
 }

@@ -1,18 +1,14 @@
 package es.gob.jmulticard.card.gide.smartcafe;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.PublicKey;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -21,13 +17,12 @@ import javax.security.auth.callback.UnsupportedCallbackException;
 
 import es.gob.jmulticard.CryptoHelper;
 import es.gob.jmulticard.HexUtils;
+import es.gob.jmulticard.JmcLogger;
 import es.gob.jmulticard.apdu.CommandApdu;
 import es.gob.jmulticard.apdu.ResponseApdu;
 import es.gob.jmulticard.apdu.StatusWord;
-import es.gob.jmulticard.apdu.connection.ApduConnection;
-import es.gob.jmulticard.apdu.connection.ApduConnectionException;
-import es.gob.jmulticard.apdu.gide.RetriesLeftApduCommand;
-import es.gob.jmulticard.apdu.gide.VerifyApduCommand;
+import es.gob.jmulticard.apdu.gide.GiDeRetriesLeftApduCommand;
+import es.gob.jmulticard.apdu.gide.GiDeVerifyApduCommand;
 import es.gob.jmulticard.apdu.iso7816eight.PsoSignHashApduCommand;
 import es.gob.jmulticard.apdu.iso7816four.MseSetComputationApduCommand;
 import es.gob.jmulticard.apdu.iso7816four.SelectFileApduResponse;
@@ -46,19 +41,21 @@ import es.gob.jmulticard.card.CryptoCard;
 import es.gob.jmulticard.card.CryptoCardException;
 import es.gob.jmulticard.card.InvalidCardException;
 import es.gob.jmulticard.card.Location;
+import es.gob.jmulticard.card.PasswordCallbackNotFoundException;
 import es.gob.jmulticard.card.PinException;
 import es.gob.jmulticard.card.PrivateKeyReference;
+import es.gob.jmulticard.card.iso7816four.AbstractIso7816FourCard;
 import es.gob.jmulticard.card.iso7816four.FileNotFoundException;
-import es.gob.jmulticard.card.iso7816four.Iso7816FourCard;
 import es.gob.jmulticard.card.iso7816four.Iso7816FourCardException;
-import es.gob.jmulticard.card.iso7816four.Iso7816fourErrorCodes;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.connection.ApduConnectionException;
 
 /** Tarjeta G&amp;D SmartCafe con Applet PKCS#15.
  * @author Vicente Ortiz
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
-public final class SmartCafePkcs15Applet extends Iso7816FourCard implements CryptoCard {
+public final class SmartCafePkcs15Applet extends AbstractIso7816FourCard implements CryptoCard {
 
-	private static final byte[] ATR_MASK = new byte[] {
+	private static final byte[] ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xf
@@ -71,7 +68,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		(byte) 0x65, (byte) 0x2d, (byte) 0x6e, (byte) 0x66, (byte) 0xc4
 	}, ATR_MASK);
 
-	private static final byte[] ATR_MASK_MSC = new byte[] {
+	private static final byte[] ATR_MASK_MSC = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
 
@@ -81,7 +78,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 	}, ATR_MASK_MSC);
 
 	/** ATR de tarjeta G&amp;D SmartCafe 3&#46;2 con T=CL (v&iacute;a inal&aacute;mbrica). */
-	private static final byte[] ATR_MASK_TCL = new byte[] {
+	private static final byte[] ATR_MASK_TCL = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xf
@@ -93,23 +90,21 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		(byte) 0x65, (byte) 0x2d, (byte) 0x6e, (byte) 0x66, (byte) 0xc4
 	}, ATR_MASK_TCL);
 
-    private static final byte[] PKCS15_NAME = new byte[] {
+    private static final byte[] PKCS15_NAME = {
         (byte) 0xA0, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x63, (byte) 0x50,
         (byte) 0x4B, (byte) 0x43, (byte) 0x53, (byte) 0x2D, (byte) 0x31, (byte) 0x35
     };
 
-    private static final byte[] ODF_PATH = new byte[] { (byte) 0x50, (byte) 0x31 };
-    private static final byte[] MF_PATH  = new byte[] { (byte) 0x3F, (byte) 0x00 };
+    private static final byte[] ODF_PATH = { (byte) 0x50, (byte) 0x31 };
+    private static final byte[] MF_PATH  = { (byte) 0x3F, (byte) 0x00 };
 
-    private static byte CLA = (byte) 0x00;
+    private static final byte CLA = (byte) 0x00;
 
-    private static final Logger LOGGER = Logger.getLogger("es.gob.jmulticard"); //$NON-NLS-1$
-
-    private static final Map<String, X509Certificate> CERTS_BY_ALIAS = new LinkedHashMap<>();
-    private static final Map<String, Integer> KEYNO_BY_ALIAS = new LinkedHashMap<>();
+    private static final Map<String, X509Certificate> CERTS_BY_ALIAS = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> KEYNO_BY_ALIAS = new ConcurrentHashMap<>();
 
     /** Octeto que identifica una verificaci&oacute;n fallida del PIN. */
-    private final static byte ERROR_PIN_SW1 = (byte) 0x63;
+    private static final byte ERROR_PIN_SW1 = (byte) 0x63;
 
     private PasswordCallback passwordCallback = null;
     private CallbackHandler callbackHandler = null;
@@ -117,39 +112,22 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     private boolean authenticated = false;
 
     /** Manejador de funciones criptogr&aacute;ficas. */
-    protected final CryptoHelper cryptoHelper;
+    private final CryptoHelper cryptoHelper;
 
     /** Construye un objeto que representa una tarjeta G&amp;D SmartCafe con el
      * Applet PKCS#15 de AET.
      * @param conn Conexi&oacute;n con la tarjeta.
-     * @param cryptoHelper Funcionalidades criptogr&aacute;ficas de utilidad que
-     *                     pueden variar entre m&aacute;quinas virtuales.
+     * @param cryptoHlpr Funcionalidades criptogr&aacute;ficas de utilidad que
+     *                   pueden variar entre m&aacute;quinas virtuales.
      * @throws IOException Si hay errores de entrada / salida. */
     public SmartCafePkcs15Applet(final ApduConnection conn,
-    		                     final CryptoHelper cryptoHelper) throws IOException {
-    	this(conn, cryptoHelper, true);
-    }
-
-    /** Construye un objeto que representa una tarjeta G&amp;D SmartCafe con el
-     * Applet PKCS#15 de AET.
-     * @param conn Conexi&oacute;n con la tarjeta.
-     * @param cryptoHelper Funcionalidades criptogr&aacute;ficas de utilidad que
-     *                     pueden variar entre m&aacute;quinas virtuales.
-     * @param failIfNoCerts Si se establece a <code>true</code> y la tarjeta no
-     *                      contiene ningun par certificado + clave privada la
-     *                      inicializaci&oacute;n falla con un <code>IOException</code>,
-     *                      si se establece a <code>false</code>, la inicializaci&oacute;n
-     *                      se completa haya o no haya claves y certificados.
-     * @throws IOException Si hay errores de entrada / salida. */
-    public SmartCafePkcs15Applet(final ApduConnection conn,
-    		                     final CryptoHelper cryptoHelper,
-    		                     final boolean failIfNoCerts) throws IOException {
+    		                     final CryptoHelper cryptoHlpr) throws IOException {
         super(CLA, conn);
 
-        if (cryptoHelper == null) {
+        if (cryptoHlpr == null) {
             throw new IllegalArgumentException("El CryptoHelper no puede ser nulo"); //$NON-NLS-1$
         }
-        this.cryptoHelper = cryptoHelper;
+        cryptoHelper = cryptoHlpr;
 
         // Conectamos
         conn.reset();
@@ -160,7 +138,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
         }
         catch (final Iso7816FourCardException e) {
         	 throw new IOException(
-                "No se ha podido seleccionar el Applet AET PKCS#15: " + e, e //$NON-NLS-1$
+                "No se ha podido seleccionar el Applet AET PKCS#15", e //$NON-NLS-1$
             );
         }
 
@@ -170,7 +148,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		}
         catch (final Iso7816FourCardException | Asn1Exception | TlvException e) {
             throw new IOException(
-        		"No se han podido leer los certificados: " + e, e //$NON-NLS-1$
+        		"No se han podido leer los certificados", e //$NON-NLS-1$
     		);
         }
 
@@ -185,7 +163,9 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     		)
 		);
 
-        LOGGER.info(
+        JmcLogger.info(
+    		SmartCafePkcs15Applet.class.getName(),
+    		"constructor", //$NON-NLS-1$
     		"Se ha" + (keyCount > 1 ? "n" : "") + " encontrado " + //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 				keyCount + " clave" + (keyCount > 1 ? "s" : "") + " y " + //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     				CERTS_BY_ALIAS.size() + " certificado" + (CERTS_BY_ALIAS.size() > 1 ? "s" : "") + //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -206,7 +186,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 				)
 			);
         	if (!res.isOk()) {
-        		LOGGER.severe(
+        		JmcLogger.severe(
     				"Error obteniendo el modulo de la clave " + i + ": " + res //$NON-NLS-1$ //$NON-NLS-2$
 				);
         		continue;
@@ -228,7 +208,9 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
         final Set<String> aliases = CERTS_BY_ALIAS.keySet();
         for (final String alias : aliases) {
         	if (!KEYNO_BY_ALIAS.containsKey(alias)) {
-        		LOGGER.info(
+        		JmcLogger.info(
+    				SmartCafePkcs15Applet.class.getName(),
+    				"constructor", //$NON-NLS-1$
     				"El certificado '" + alias + "' se descarta por carecer de clave privada" //$NON-NLS-1$ //$NON-NLS-2$
 				);
         		CERTS_BY_ALIAS.remove(alias);
@@ -280,13 +262,13 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 	/** Establece el <code>PasswordCallback</code> para el PIN de la tarjeta.
      * @param pwc <code>PasswordCallback</code> para el PIN de la tarjeta. */
     public void setPasswordCallback(final PasswordCallback pwc) {
-    	this.passwordCallback = pwc;
+    	passwordCallback = pwc;
     }
 
     /** Establece el <code>CallbackHandler</code>.
      * @param callh <code>CallbackHandler</code> a establecer. */
 	public void setCallbackHandler(final CallbackHandler callh) {
-		this.callbackHandler = callh;
+		callbackHandler = callh;
 	}
 
     /** Conecta con el lector del sistema que tenga una tarjeta insertada.
@@ -302,8 +284,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
         checkAtr(conn.reset());
     }
 
-    private void preloadCertificates() throws FileNotFoundException,
-                                              Iso7816FourCardException,
+    private void preloadCertificates() throws Iso7816FourCardException,
                                               IOException,
                                               Asn1Exception,
                                               TlvException {
@@ -329,67 +310,54 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
         }
         catch (final Exception e) {
             throw new ApduConnectionException(
-                "No se ha podido cargar el CDF de la tarjeta: " + e, e //$NON-NLS-1$
+                "No se ha podido cargar el CDF de la tarjeta", e //$NON-NLS-1$
             );
         }
 
-        final CertificateFactory cf;
-        try {
-            cf = CertificateFactory.getInstance("X.509"); //$NON-NLS-1$
-        }
-        catch (final CertificateException e) {
-            throw new IOException("Error obteniendo la factoria de certificados X.509: " + e, e); //$NON-NLS-1$
-        }
         if (cdf.getCertificateCount() < 1) {
-        	LOGGER.warning("La tarjeta no contiene ningun certificado"); //$NON-NLS-1$
+        	JmcLogger.warning("La tarjeta no contiene ningun certificado"); //$NON-NLS-1$
         }
         for (int i = 0; i < cdf.getCertificateCount(); i++) {
-            try {
-            	int fileLength = -1;
-            	Location certLocation = new Location(cdf.getCertificatePath(i));
-                while (certLocation != null) {
-                    final byte[] id = certLocation.getFile();
-                    try {
-                    	fileLength = selectFileById(id);
-                    }
-                    catch(final FileNotFoundException e) {
-                    	System.out.println(
-                			"El CDF indicaba un certificado en la ruta '" + certLocation + "', pero un elemento de esta no existe, se ignorara: " + e //$NON-NLS-1$//$NON-NLS-2$
-            			);
-                    }
-                    certLocation = certLocation.getChild();
-                }
-
-                final byte[] certBytes;
-                if (fileLength > 0) {
-                	certBytes = readBinaryComplete(fileLength);
-                }
-                else {
-                	// A veces hay punteros que apuntan a localizaciones vacias
-                	LOGGER.warning(
-            			"El certificado " + i + " del dispositivo esta vacio" //$NON-NLS-1$ //$NON-NLS-2$
-        			);
-                	continue;
-                }
-
-                CERTS_BY_ALIAS.put(
-                    cdf.getCertificateAlias(i),
-                    (X509Certificate) cf.generateCertificate(
-                        new ByteArrayInputStream(
-                    		certBytes
-                        )
-                    )
-                );
-            }
-            catch (final Exception e) {
-            	// Puede darse el caso de que el puntero apunte a algo que no es un certificado
-                LOGGER.severe(
-            		"Error en la lectura del certificado " + i + " del dispositivo: " + e //$NON-NLS-1$ //$NON-NLS-2$
-        		);
-                continue;
-            }
+            preloadCertificate(cdf.getCertificatePath(i), cdf.getCertificateAlias(i));
         }
+    }
 
+    private void preloadCertificate(final String certificatePath, final String certificateAlias) {
+        try {
+        	int fileLength = -1;
+        	Location certLocation = new Location(certificatePath);
+            while (certLocation != null) {
+                final byte[] id = certLocation.getFile();
+                try {
+                	fileLength = selectFileById(id);
+                }
+                catch(final FileNotFoundException e) {
+                	JmcLogger.warning(
+            			"El CDF indicaba un certificado en la ruta '" + certLocation + "', pero un elemento de esta no existe, se ignorara: " + e //$NON-NLS-1$//$NON-NLS-2$
+        			);
+                }
+                certLocation = certLocation.getChild();
+            }
+
+            final byte[] certBytes;
+            if (fileLength <= 0) {
+            	// A veces hay punteros que apuntan a localizaciones vacias
+            	JmcLogger.warning(
+        			"El certificado " + certificateAlias + " del dispositivo esta vacio" //$NON-NLS-1$ //$NON-NLS-2$
+    			);
+            	return;
+            }
+			certBytes = readBinaryComplete(fileLength);
+
+            CERTS_BY_ALIAS.put(
+        		certificateAlias,
+                CryptoHelper.generateCertificate(certBytes)
+            );
+        }
+        catch (final Exception e) {
+        	// Puede darse el caso de que el puntero apunte a algo que no es un certificado
+        	JmcLogger.severe("Error en la lectura del certificado " + certificateAlias + " del dispositivo: " + e); //$NON-NLS-1$ //$NON-NLS-2$
+        }
     }
 
     @Override
@@ -415,7 +383,9 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder(getCardName())
-            .append("\n Tarjeta con ").append(CERTS_BY_ALIAS.size()).append(" certificado(s):\n"); //$NON-NLS-1$ //$NON-NLS-2$
+            .append("\n Tarjeta con ") //$NON-NLS-1$
+            	.append(CERTS_BY_ALIAS.size())
+            		.append(" certificado(s):\n"); //$NON-NLS-1$
         final String[] aliases = getAliases();
         for (int i = 0; i < aliases.length; i++) {
             sb.append("  "); //$NON-NLS-1$
@@ -456,35 +426,32 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     }
 
     @Override
-    public void verifyPin(final PasswordCallback psc) throws ApduConnectionException, PinException {
+    public void verifyPin(final PasswordCallback psc) throws ApduConnectionException,
+                                                             PinException,
+                                                             PasswordCallbackNotFoundException {
     	if(psc == null) {
-    		throw new IllegalArgumentException(
+    		throw new PasswordCallbackNotFoundException(
     			"No se puede verificar el titular con un PasswordCallback nulo" //$NON-NLS-1$
         	);
     	}
-    	VerifyApduCommand verifyCommandApdu = new VerifyApduCommand(psc);
-    	final ResponseApdu verifyResponse = getConnection().transmit(
-			verifyCommandApdu
-    	);
-    	verifyCommandApdu = null;
+
+    	final ResponseApdu verifyResponse = getConnection().transmit(new GiDeVerifyApduCommand(psc));
     	if (!verifyResponse.isOk()) {
     		if (verifyResponse.getStatusWord().getMsb() == ERROR_PIN_SW1) {
     			throw new BadPinException(verifyResponse.getStatusWord().getLsb() - (byte) 0xC0);
     		}
-            else if (
+			if (
         		verifyResponse.getStatusWord().getMsb() == (byte)0x69 &&
         		verifyResponse.getStatusWord().getLsb() == (byte)0x83
     		) {
             	throw new AuthenticationModeLockedException();
             }
-            else {
-            	throw new ApduConnectionException(
-        			new Iso7816FourCardException(
-    	        		"Error en la verificacion de PIN (" + verifyResponse.getStatusWord() + ")", //$NON-NLS-1$ //$NON-NLS-2$
-    	        		verifyResponse.getStatusWord()
-    				)
-    			);
-            }
+			throw new ApduConnectionException(
+				new Iso7816FourCardException(
+					"Error en la verificacion de PIN (" + verifyResponse.getStatusWord() + ")", //$NON-NLS-1$ //$NON-NLS-2$
+					verifyResponse.getStatusWord()
+				)
+			);
     	}
     }
 
@@ -519,13 +486,13 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		final SmartCafePrivateKeyReference scPrivateKey = (SmartCafePrivateKeyReference) keyRef;
 
 		// Pedimos el PIN si no se ha pedido antes
-		if (!this.authenticated) {
+		if (!authenticated) {
 			try {
 				verifyPin(getInternalPasswordCallback());
-				this.authenticated = true;
+				authenticated = true;
 			}
 			catch (final ApduConnectionException e1) {
-				throw new CryptoCardException("Error en la verificacion de PIN: " + e1, e1); //$NON-NLS-1$
+				throw new CryptoCardException("Error en la verificacion de PIN", e1); //$NON-NLS-1$
 			}
 		}
 
@@ -542,7 +509,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		}
 		catch (final ApduConnectionException e) {
 			throw new CryptoCardException(
-				"Error estableciendo la clave y el algoritmo de firma (repuesta=" + res + "): " + e, e //$NON-NLS-1$ //$NON-NLS-2$
+				"Error estableciendo la clave y el algoritmo de firma (repuesta=" + res + ")", e //$NON-NLS-1$ //$NON-NLS-2$
 			);
 		}
 		if (res == null || !res.isOk()) {
@@ -554,10 +521,10 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 		// Creamos el DigestInfo
         final byte[] digestInfo;
         try {
-            digestInfo = DigestInfo.encode(algorithm, data, this.cryptoHelper);
+            digestInfo = DigestInfo.encode(algorithm, data, cryptoHelper);
         }
         catch (final IOException e) {
-            throw new CryptoCardException("Error en el calculo de la huella para firmar: " + e, e); //$NON-NLS-1$
+            throw new CryptoCardException("Error en el calculo de la huella para firmar", e); //$NON-NLS-1$
         }
 
         // Y lo enviamos a firmar
@@ -565,9 +532,7 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 			res = sendArbitraryApdu(new PsoSignHashApduCommand((byte) 0x01, digestInfo));
 		}
         catch (final ApduConnectionException e) {
-        	throw new CryptoCardException(
-				"Error firmando (repuesta=" + res + "): " + e, e //$NON-NLS-1$ //$NON-NLS-2$
-			);
+        	throw new CryptoCardException("Error firmando (repuesta=" + res + ")", e); //$NON-NLS-1$ //$NON-NLS-2$
 		}
         if (res == null || !res.isOk()) {
 			throw new CryptoCardException(
@@ -579,36 +544,33 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     }
 
     private int getPinRetriesLeft() throws PinException {
-    	final CommandApdu verifyCommandApdu = new RetriesLeftApduCommand();
+    	final CommandApdu verifyCommandApdu = new GiDeRetriesLeftApduCommand();
     	final ResponseApdu verifyResponse;
 		try {
-			verifyResponse = getConnection().transmit(
-				verifyCommandApdu
-			);
+			verifyResponse = getConnection().transmit(verifyCommandApdu);
 		}
 		catch (final ApduConnectionException e) {
 			throw new PinException(
-				"Error obteniendo el PIN del CallbackHandler: " + e, e  //$NON-NLS-1$
+				"Error obteniendo el PIN del CallbackHandler", e  //$NON-NLS-1$
 			);
 		}
 		if (verifyResponse.isOk() || verifyResponse.getBytes().length > 2) {
 			return verifyResponse.getBytes()[1];
 		}
 		throw new PinException(
-			"Error comprobando los intentos restantes de PIN con respuesta: " + //$NON-NLS-1$
-				Iso7816fourErrorCodes.getErrorDescription(verifyResponse.getStatusWord())
+			"Error comprobando los intentos restantes de PIN con respuesta: " + verifyResponse.getStatusWord() //$NON-NLS-1$
 		);
     }
 
     private PasswordCallback getInternalPasswordCallback() throws PinException {
-    	if (this.passwordCallback != null) {
+    	if (passwordCallback != null) {
     		final int retriesLeft = getPinRetriesLeft();
     		if(retriesLeft == 0) {
     			throw new AuthenticationModeLockedException();
     		}
-    		return this.passwordCallback;
+    		return passwordCallback;
     	}
-    	if (this.callbackHandler != null) {
+    	if (callbackHandler != null) {
         	final int retriesLeft = getPinRetriesLeft();
         	if(retriesLeft == 0) {
         		throw new AuthenticationModeLockedException();
@@ -618,21 +580,13 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 				false
 			);
 			try {
-				this.callbackHandler.handle(
-					new Callback[] {
-						pwc
-					}
-				);
+				callbackHandler.handle(new Callback[] { pwc });
 			}
 			catch (final IOException e) {
-				throw new PinException(
-					"Error obteniendo el PIN del CallbackHandler: " + e, e//$NON-NLS-1$
-				);
+				throw new PinException("Error obteniendo el PIN del CallbackHandler", e); //$NON-NLS-1$
 			}
 			catch (final UnsupportedCallbackException e) {
-				throw new PinException(
-					"El CallbackHandler no soporta pedir el PIN al usuario: " + e, e //$NON-NLS-1$
-				);
+				throw new PinException("El CallbackHandler no soporta pedir el PIN al usuario", e); //$NON-NLS-1$
 			}
 			return pwc;
     	}
@@ -642,13 +596,13 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
     private static void checkAtr(final byte[] atrBytes) throws InvalidCardException {
     	final Atr tmpAtr = new Atr(atrBytes, ATR_MASK);
     	if (ATR.equals(tmpAtr)) {
-    		LOGGER.info("Detectada G&D SmartCafe 3.2"); //$NON-NLS-1$
+    		JmcLogger.info(SmartCafePkcs15Applet.class.getName(), "checkAtr", "Detectada G&D SmartCafe 3.2"); //$NON-NLS-1$ //$NON-NLS-2$
     	}
     	else if (ATR_MSC.equals(tmpAtr)) {
-    		LOGGER.info("Detectada G&D Mobile Security Card"); //$NON-NLS-1$
+    		JmcLogger.info(SmartCafePkcs15Applet.class.getName(), "checkAtr", "Detectada G&D Mobile Security Card"); //$NON-NLS-1$ //$NON-NLS-2$
     	}
     	else if (ATR_TCL.equals(tmpAtr)) {
-    		LOGGER.info("Detectada G&D SmartCafe 3.2 via T=CL (conexion inalambrica)"); //$NON-NLS-1$
+    		JmcLogger.info(SmartCafePkcs15Applet.class.getName(), "checkAtr", "Detectada G&D SmartCafe 3.2 via T=CL (conexion inalambrica)"); //$NON-NLS-1$ //$NON-NLS-2$
     	}
     	else {
 	    	throw new InvalidCardException(
@@ -656,5 +610,4 @@ public final class SmartCafePkcs15Applet extends Iso7816FourCard implements Cryp
 			);
     	}
     }
-
 }

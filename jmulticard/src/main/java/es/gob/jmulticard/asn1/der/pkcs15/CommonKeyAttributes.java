@@ -66,28 +66,26 @@ public final class CommonKeyAttributes extends Sequence {
 	/** Construye un objeto ASN&#46;1 PKCS#15 <i>CommonKeyAttributes</i>. */
 	public CommonKeyAttributes() {
 		super(
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					Identifier.class,    // Subtipo de Octet String
-					false
-				),
-				new OptionalDecoderObjectElement(
-					KeyUsageFlags.class, // Subtipo de Bit String
-					false
-				),
-				new OptionalDecoderObjectElement(
-					DerBoolean.class,
-					true // Opcional
-				),
-				new OptionalDecoderObjectElement(
-					AccessFlags.class,   // Subtipo de Bit String
-					false
-				),
-				new OptionalDecoderObjectElement(
-					Reference.class,     // Subtipo de Integer
-					false
-				)
-			}
+			new OptionalDecoderObjectElement(
+				Identifier.class,    // Subtipo de Octet String
+				false
+			),
+			new OptionalDecoderObjectElement(
+				KeyUsageFlags.class, // Subtipo de Bit String
+				false
+			),
+			new OptionalDecoderObjectElement(
+				DerBoolean.class,
+				true // Opcional
+			),
+			new OptionalDecoderObjectElement(
+				AccessFlags.class,   // Subtipo de Bit String
+				false
+			),
+			new OptionalDecoderObjectElement(
+				Reference.class,     // Subtipo de Integer
+				false
+			)
 		);
 	}
 
@@ -101,7 +99,7 @@ public final class CommonKeyAttributes extends Sequence {
 	 * @return Referencia de la clave, o <code>null</code> si la clave no tiene referencia. */
 	public Reference getReference() {
 		// Recorro la secuencia buscando la referencia, porque no puedo saber la posicion exacta con los opcionales
-		for (int i=0;i<getElementCount();i++) {
+		for (int i=0; i<getElementCount(); i++) {
 			final Object o = getElementAt(i);
 			if (o instanceof Reference) {
 				return (Reference) o;
@@ -109,5 +107,4 @@ public final class CommonKeyAttributes extends Sequence {
 		}
 		return null;
 	}
-
 }

@@ -17,8 +17,14 @@ public final class CeresPrivateKey implements RSAPrivateKey {
 
 	private static final long serialVersionUID = 4403051294889801855L;
 
-	private final Ceres ceres;
-	private final CeresPrivateKeyReference keyRef;
+	/** Instancia de la tarjeta donde reside la clave. */
+	private final transient Ceres ceres;
+
+	/** Referencia a la clave dentro de la tarjeta. */
+	private final transient CeresPrivateKeyReference keyRef;
+
+	/** M&oacute;dulo de la clave privada.
+	 * Al ser la clave privada interna a la tarjeta, este dato se obtiene de la p&uacute;blica (es igual). */
 	private final BigInteger modulus;
 
 	/** Crea una clave privada de tarjeta FNMT-RCM-CERES.
@@ -26,12 +32,11 @@ public final class CeresPrivateKey implements RSAPrivateKey {
 	 * @param card Tarjeta a la cual pertenece esta clave.
 	 * @param mod M&oacute;dulo de la clave privada. */
 	CeresPrivateKey(final CeresPrivateKeyReference keyReference, final Ceres card, final BigInteger mod) {
-		this.keyRef = keyReference;
-		this.ceres = card;
-		this.modulus = mod;
+		keyRef = keyReference;
+		ceres = card;
+		modulus = mod;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getAlgorithm() {
 		return "RSA"; //$NON-NLS-1$
@@ -40,16 +45,14 @@ public final class CeresPrivateKey implements RSAPrivateKey {
 	/** Obtiene la tarjeta capaz de operar con esta clave.
 	 * @return Tarjeta capaz de operar con esta clave. */
 	CryptoCard getCryptoCard() {
-		return this.ceres;
+		return ceres;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public byte[] getEncoded() {
 		return null;
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String getFormat() {
 		return null;
@@ -58,29 +61,31 @@ public final class CeresPrivateKey implements RSAPrivateKey {
 	/** Recupera la referencia de la clave.
 	 * @return Referencia de la clave. */
 	CeresPrivateKeyReference getReference() {
-		return this.keyRef;
+		return keyRef;
 	}
 
-	/** M&eacute;todo no soportado. */
+	/** No soportado. */
 	@Override
 	public BigInteger getModulus() {
-		return this.modulus;
+		return modulus;
 	}
 
-	/** M&eacute;todo no soportado. */
+	/** No soportado. */
 	@Override
 	public BigInteger getPrivateExponent() {
 		throw new UnsupportedOperationException();
 	}
 
-	/** {@inheritDoc} */
 	@Override
 	public String toString() {
-		return this.keyRef.toString();
+		return keyRef.toString();
 	}
 
-	@SuppressWarnings({ "static-method", "unused" })
-	private void writeObject(final ObjectOutputStream out) throws IOException {
+	/** Serializaci&oacute;n no soportada, lanza un <code>NotSerializableException</code>.
+	 * @param outStream No se usa.
+	 * @throws IOException No se lanza, siempre lanza un <code>NotSerializableException</code>. */
+	@SuppressWarnings({ "static-method" })
+	private void writeObject(final ObjectOutputStream outStream) throws IOException {
 		throw new NotSerializableException();
 	}
 }

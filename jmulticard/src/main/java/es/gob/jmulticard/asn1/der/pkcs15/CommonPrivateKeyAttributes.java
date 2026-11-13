@@ -23,16 +23,16 @@ public final class CommonPrivateKeyAttributes extends Sequence {
 		super(
 			// Solo contemplamos el "name", que es de tipo "Name",
 			// implementado casi siempre como "RdnSequence".
-			new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					RdnSequence.class,
-					true // Opcional
-				)
-			}
+			new OptionalDecoderObjectElement(
+				RdnSequence.class,
+				true // Opcional
+			)
 		);
 	}
 
-	X500Principal getKeyPrincipal() {
+	/** Obtiene el <code>Principal</code> X&#46;509 de la clave privada.
+	 * @return <code>Principal</code> X&#46;509 de la clave privada. */
+	public X500Principal getKeyPrincipal() {
 		for (int i=0;i<getElementCount();i++) {
 			final Object o = getElementAt(i);
 			if (o instanceof RdnSequence) {
@@ -41,5 +41,4 @@ public final class CommonPrivateKeyAttributes extends Sequence {
 		}
 		return null;
 	}
-
 }

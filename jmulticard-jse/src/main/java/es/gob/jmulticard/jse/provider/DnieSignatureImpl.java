@@ -73,20 +73,18 @@ abstract class DnieSignatureImpl extends SignatureSpi {
 
     private DniePrivateKey privateKey = null;
 
+    /** Algoritmo de firma. */
     private final String signatureAlgo;
 
     DnieSignatureImpl(final String signatureAlgorithm) {
-        super();
         this.signatureAlgo = signatureAlgorithm;
     }
 
-    /** {@inheritDoc} */
     @Override
     protected Object engineGetParameter(final String param) {
         throw new InvalidParameterException("Parametro no soportado"); //$NON-NLS-1$
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineInitSign(final PrivateKey prKey) throws InvalidKeyException {
         if (prKey == null) {
@@ -99,38 +97,36 @@ abstract class DnieSignatureImpl extends SignatureSpi {
         this.data.reset();
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineInitVerify(final PublicKey publicKey) throws InvalidKeyException {
         this.data.reset();
         try {
         	this.signatureVerifier = Signature.getInstance(this.signatureAlgo);
-            try {
-            	if (this.signatureVerifier.getProvider() instanceof DnieProvider) {
-            		this.signatureVerifier = Signature.getInstance(this.signatureAlgo, "SunRsaSign"); //$NON-NLS-1$
-            	}
-            }
-            catch (final NoSuchProviderException e) {
-                throw new IllegalStateException(
-            		"No esta instalado el proveedor SunRsaSign", e //$NON-NLS-1$
-                );
-            }
+        	if (this.signatureVerifier.getProvider() instanceof DnieProvider) {
+        		this.signatureVerifier = Signature.getInstance(
+    				this.signatureAlgo,
+    				ProviderUtil.getDefaultOtherProvider("Signature", this.signatureAlgo) //$NON-NLS-1$
+				);
+        	}
         }
         catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException(
                 "No existe un proveedor para validar firmas con el algoritmo " + this.signatureAlgo, e //$NON-NLS-1$
             );
         }
+        catch (final NoSuchProviderException e) {
+            throw new IllegalStateException(
+        		"No esta instalado el proveedor por defecto de firma", e //$NON-NLS-1$
+            );
+        }
         this.signatureVerifier.initVerify(publicKey);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineSetParameter(final String param, final Object value) {
         throw new InvalidParameterException("Parametro no soportado"); //$NON-NLS-1$
     }
 
-    /** {@inheritDoc} */
     @Override
     protected byte[] engineSign() throws SignatureException {
 
@@ -164,19 +160,16 @@ abstract class DnieSignatureImpl extends SignatureSpi {
 		}
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineUpdate(final byte b) {
         this.data.write(b);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected void engineUpdate(final byte[] b, final int off, final int len) {
         this.data.write(b, off, len);
     }
 
-    /** {@inheritDoc} */
     @Override
     protected boolean engineVerify(final byte[] sigBytes) throws SignatureException {
         if (this.signatureVerifier == null) {

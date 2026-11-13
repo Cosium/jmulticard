@@ -10,7 +10,7 @@ import es.gob.jmulticard.asn1.der.ContextSpecific;
  *  PrivateKeys ::= PathOrObjects {PrivateKeyType}
  * </pre>
  * Esta implememtaci&oacute;n solo soporta <code>Path</code> como tipo de los registros.
- * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s */
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class PrivateKeysContextSpecific extends ContextSpecific {
 
 	private static final byte TAG = (byte) 0xA0;
@@ -21,7 +21,6 @@ public final class PrivateKeysContextSpecific extends ContextSpecific {
 		super(Path.class);
 	}
 
-	/** {@inheritDoc} */
 	@Override
     public void checkTag(final byte tag) throws Asn1Exception {
 		if (TAG != tag) {
@@ -42,5 +41,4 @@ public final class PrivateKeysContextSpecific extends ContextSpecific {
 			"El objeto interno no es de tipo Path PKCS#15" //$NON-NLS-1$
 		);
 	}
-
 }

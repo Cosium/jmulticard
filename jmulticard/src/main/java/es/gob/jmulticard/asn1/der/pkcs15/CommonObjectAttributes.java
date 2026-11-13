@@ -52,26 +52,25 @@ import es.gob.jmulticard.asn1.der.Utf8String;
  *  }
  *  Label ::= UTF8String (SIZE(0..pkcs15-ub-label))
  * </pre>
- * @author Gonzalo Henr&iacute;quez Manzano */
+ * @author Gonzalo Henr&iacute;quez Manzano
+ * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class CommonObjectAttributes extends Sequence {
 
     /** Construye un objeto <i>CommonObjectAttributes</i> ASN&#46;1 de PKCS#15. */
 	public CommonObjectAttributes() {
         super(
-    		new OptionalDecoderObjectElement[] {
-				new OptionalDecoderObjectElement(
-					Utf8String.class, // Label
-					false
-				),
-				new OptionalDecoderObjectElement(
-					CommonObjectFlags.class, // Subtipo de Bit String
-					true
-				),
-				new OptionalDecoderObjectElement(
-					Identifier.class,        // Subtipo de Octet String
-					true
-				)
-    		}
+			new OptionalDecoderObjectElement(
+				Utf8String.class, // Label
+				false
+			),
+			new OptionalDecoderObjectElement(
+				CommonObjectFlags.class, // Subtipo de Bit String
+				true
+			),
+			new OptionalDecoderObjectElement(
+				Identifier.class,        // Subtipo de Octet String
+				true
+			)
 		);
     }
 
@@ -84,7 +83,7 @@ public final class CommonObjectAttributes extends Sequence {
     /** Obtiene el identificador del objecto.
      * @return Identificador del objecto */
     public byte[] getIdentifier() {
-    	for (int i=0;i<getElementCount();i++) {
+    	for (int i=0; i<getElementCount(); i++) {
     		final Object o = getElementAt(i);
     		if (o instanceof Identifier) {
     			return ((Identifier)o).getOctectStringByteValue().clone();
@@ -92,5 +91,4 @@ public final class CommonObjectAttributes extends Sequence {
     	}
     	return null;
     }
-
 }

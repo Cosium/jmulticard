@@ -1,25 +1,26 @@
 package es.gob.jmulticard.jse.provider;
 
+import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
 import java.util.logging.Logger;
 
-import es.gob.jmulticard.apdu.connection.ApduConnection;
-import es.gob.jmulticard.apdu.connection.ApduConnectionException;
 import es.gob.jmulticard.card.Atr;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.connection.ApduConnectionException;
+import es.gob.jmulticard.connection.CardNotPresentException;
 import es.gob.jmulticard.jse.provider.ceres.CeresProvider;
 import es.gob.jmulticard.jse.provider.gide.SmartCafeProvider;
-import es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection;
 
 /** Factori&iacute;a de proveedores para todas las tarjetas soportadas.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
 public final class JMultiCardProviderFactory {
 
-	private static final Logger LOGGER = Logger.getLogger("es.gob.jmulticard"); //$NON-NLS-1$
+	private static final Logger LOGGER = Logger.getLogger(JMultiCardProviderFactory.class.getName());
 
 	// **************************************************************************
 	// ********* ATR DNIe Y COMPATIBLES *****************************************
 
-	private static final byte[] DNI_NFC_ATR_MASK = new byte[] {
+	private static final byte[] DNI_NFC_ATR_MASK = {
 		(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
 		(byte) 0xFF, (byte) 0xFF, (byte) 0x00, (byte) 0xFF, (byte) 0x00
 	};
@@ -28,7 +29,8 @@ public final class JMultiCardProviderFactory {
 		(byte) 0x77, (byte) 0x81, (byte) 0xA1, (byte) 0x00, (byte) 0x03
 	}, DNI_NFC_ATR_MASK);
 
-	private static final byte[] DNI_ATR_MASK = new byte[] {
+
+	private static final byte[] DNI_ATR_MASK = {
 		(byte) 0xFF, (byte) 0xFF, (byte) 0x00, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
 		(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
 		(byte) 0x00, (byte) 0x00, (byte) 0xFF, (byte) 0xFF
@@ -38,16 +40,23 @@ public final class JMultiCardProviderFactory {
 		(byte) 0x4E, (byte) 0x49, (byte) 0x65, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
 		(byte) 0x00, (byte) 0x00, (byte) 0x90, (byte) 0x00
 	}, DNI_ATR_MASK);
+
+
+	private static final byte[] TIF_ATR_MASK = DNI_ATR_MASK;
 	private static final Atr TIF_ATR = new Atr(new byte[] {
 		(byte) 0x3B, (byte) 0x7F, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A, (byte) 0x54,
 		(byte) 0x49, (byte) 0x46, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
 		(byte) 0x00, (byte) 0x00, (byte) 0x90, (byte) 0x00
-	}, DNI_ATR_MASK);
+	}, TIF_ATR_MASK);
+
+
+	private static final byte[] FNMT_TC_430_ATR_MASK = DNI_ATR_MASK;
 	private static final Atr FNMT_TC_430_ATR = new Atr(new byte[] {
 		(byte) 0x3B, (byte) 0x7F, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x6A, (byte) 0x46,
 		(byte) 0x4E, (byte) 0x4D, (byte) 0x54, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
 		(byte) 0x00, (byte) 0x00, (byte) 0x90, (byte) 0x00
-	}, DNI_ATR_MASK);
+	}, FNMT_TC_430_ATR_MASK);
+
 
 	// ********* FIN ATR DNIe Y COMPATIBLES *************************************
 	// **************************************************************************
@@ -55,7 +64,7 @@ public final class JMultiCardProviderFactory {
 	// **************************************************************************
 	// ********************* ATR FNMT-CERES *************************************
 
-	private static final byte[] CERES_TC_ATR_MASK = new byte[] {
+	private static final byte[] CERES_TC_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
 		(byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff
@@ -67,7 +76,7 @@ public final class JMultiCardProviderFactory {
     }, CERES_TC_ATR_MASK);
 
 
-	private static final byte[] CERES_ST_ATR_MASK = new byte[] {
+	private static final byte[] CERES_ST_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0x00,
 		(byte) 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff
@@ -79,7 +88,7 @@ public final class JMultiCardProviderFactory {
     }, CERES_ST_ATR_MASK);
 
 
-	private static final byte[] CERES_SLE_FN20_ATR_MASK = new byte[] {
+	private static final byte[] CERES_SLE_FN20_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
@@ -91,7 +100,7 @@ public final class JMultiCardProviderFactory {
     }, CERES_SLE_FN20_ATR_MASK);
 
 
-	private static final byte[] CERES_SLE_FN19_ATR_MASK = new byte[] {
+	private static final byte[] CERES_SLE_FN19_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
@@ -108,7 +117,7 @@ public final class JMultiCardProviderFactory {
 	// **************************************************************************
 	// ********************* ATR G&D SMARTCAFE **********************************
 
-	private static final byte[] GIDE_SCAF_ATR_MASK = new byte[] {
+	private static final byte[] GIDE_SCAF_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xf
@@ -121,7 +130,8 @@ public final class JMultiCardProviderFactory {
 		(byte) 0xc4
 	}, GIDE_SCAF_ATR_MASK);
 
-	private static final byte[] GIDE_SCAF_MSC_ATR_MASK = new byte[] {
+
+	private static final byte[] GIDE_SCAF_MSC_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff
 	};
 
@@ -130,8 +140,9 @@ public final class JMultiCardProviderFactory {
 		(byte) 0x3b, (byte) 0x80, (byte) 0x80, (byte) 0x01, (byte) 0x01
 	}, GIDE_SCAF_MSC_ATR_MASK);
 
+
 	/** ATR de tarjeta G&amp;D SmartCafe 3&#46;2 con T=CL (v&iacute;a inal&aacute;mbrica). */
-	private static final byte[] GIDE_SCAF_TCL_ATR_MASK = new byte[] {
+	private static final byte[] GIDE_SCAF_TCL_ATR_MASK = {
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
 		(byte) 0xf
@@ -157,7 +168,40 @@ public final class JMultiCardProviderFactory {
 	 *         no hay ninguna insertada, no ha lector de tarjetas o no se
 	 *         encuentra ninguna tarjeta soportada. */
 	public static Provider getProvider() {
-		final ApduConnection conn = new SmartcardIoConnection();
+		return getProvider((String)null);
+	}
+
+	/** Obtiene el proveedor (con la conexi&oacute;n indicada) correspondiente
+	 * a la primera tarjeta encontrada en el sistema.
+	 * @param connectionClassName Nombre de la clase de conexi&oacute;n a usar.
+	 * @return Proveedor (con la conexi&oacute;n por defecto) correspondiente
+	 *         a la primera tarjeta encontrada insertada o <code>null</code> si
+	 *         no hay ninguna insertada, no ha lector de tarjetas o no se
+	 *         encuentra ninguna tarjeta soportada. */
+	public static Provider getProvider(final String connectionClassName) {
+		final ApduConnection conn;
+		try {
+			conn = (ApduConnection) Class.forName(
+				connectionClassName != null && !connectionClassName.isEmpty() ?
+					connectionClassName :
+						ProviderUtil.DEFAULT_PROVIDER_CLASSNAME
+			).getConstructor().newInstance();
+		}
+		catch (final InstantiationException    |
+			         IllegalAccessException    |
+			         IllegalArgumentException  |
+			         InvocationTargetException |
+			         NoSuchMethodException     |
+			         SecurityException         |
+			         ClassNotFoundException e2) {
+			throw new IllegalStateException(
+				"No se ha podido instanciar la conexion " + //$NON-NLS-1$
+					(connectionClassName != null && !connectionClassName.isEmpty() ?
+						connectionClassName :
+							ProviderUtil.DEFAULT_PROVIDER_CLASSNAME),
+				e2
+			);
+		}
 		final long[] terminals;
 		try {
 			terminals = conn.getTerminals(false);
@@ -168,17 +212,31 @@ public final class JMultiCardProviderFactory {
 			);
 			return null;
 		}
-		byte[] atr = null;
+
 		for (final long terminal : terminals) {
-			conn.setTerminal((int) terminal);
 			try {
-				atr = conn.reset();
+				conn.setTerminal((int) terminal);
 			}
-			catch(final Exception e) {
+			catch (final ApduConnectionException e1) {
+				LOGGER.warning("Numero de terminal no valido (" + terminal + "): " + e1); //$NON-NLS-1$ //$NON-NLS-2$
 				continue;
 			}
+
+			try {
+				final byte[] atr = conn.reset();
+				final Provider provider = getProvider(atr);
+				if (provider != null) {
+					return provider;
+				}
+			}
+			catch (final CardNotPresentException e) {
+				LOGGER.info("No hay tarjeta insertada en el lector " + terminal + ": " + e); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			catch(final Exception e) {
+				LOGGER.warning("Error reiniciando el lector " + terminal + ": " + e); //$NON-NLS-1$ //$NON-NLS-2$
+			}
 		}
-		return getProvider(atr);
+		return null;
 	}
 
 	/** Obtiene el proveedor (con la conexi&oacute;n por defecto) correspondiente
@@ -191,11 +249,8 @@ public final class JMultiCardProviderFactory {
 		if (atr == null) {
 			return null;
 		}
-		if (isDni(atr)) {
+		if (isDni(atr) || isCeres430(atr)) {
 			return new DnieProvider();
-		}
-		if (isCeres430(atr)) {
-			return new Ceres430Provider();
 		}
 		if (isCeres(atr)) {
 			return new CeresProvider();
@@ -207,46 +262,28 @@ public final class JMultiCardProviderFactory {
 	}
 
 	private static boolean isDni(final byte[] atr) {
-		if (
-			DNI_ATR.equals(atr) ||
-			TIF_ATR.equals(atr) ||
-			DNI_NFC_ATR.equals(atr)
-		) {
-			return true;
-		}
-		return false;
+		return
+			DNI_ATR.equals(new Atr(atr, DNI_ATR_MASK)) ||
+			TIF_ATR.equals(new Atr(atr, TIF_ATR_MASK)) ||
+			DNI_NFC_ATR.equals(new Atr(atr, DNI_NFC_ATR_MASK));
 	}
 
 	private static boolean isCeres430(final byte[] atr) {
-		if (FNMT_TC_430_ATR.equals(atr)) {
-			if (atr[15] >= (byte) 0x04 && atr[16] >= (byte) 0x30) {
-				return true;
-			}
-		}
-		return false;
+		return FNMT_TC_430_ATR.equals(new Atr(atr, FNMT_TC_430_ATR_MASK)) && atr[15] >= (byte) 0x04 && atr[16] >= (byte) 0x30;
 	}
 
 	private static boolean isCeres(final byte[] atr) {
-		if (
-			CERES_TC_ATR.equals(atr)       ||
-			CERES_ST_ATR.equals(atr)       ||
-			CERES_SLE_FN20_ATR.equals(atr) ||
-			CERES_SLE_FN19_ATR.equals(atr)
-		) {
-			return true;
-		}
-		return false;
+		return
+			CERES_TC_ATR.equals(new Atr(atr, CERES_TC_ATR_MASK))             ||
+			CERES_ST_ATR.equals(new Atr(atr, CERES_ST_ATR_MASK))             ||
+			CERES_SLE_FN20_ATR.equals(new Atr(atr, CERES_SLE_FN20_ATR_MASK)) ||
+			CERES_SLE_FN19_ATR.equals(new Atr(atr, CERES_SLE_FN19_ATR_MASK));
 	}
 
 	private static boolean isGiDeSmartCafe(final byte[] atr) {
-		if (
-			GIDE_SCAF_ATR.equals(atr)     ||
-			GIDE_SCAF_MSC_ATR.equals(atr) ||
-			GIDE_SCAF_TCL_ATR.equals(atr)
-		) {
-			return true;
-		}
-		return false;
+		return
+			GIDE_SCAF_ATR.equals(new Atr(atr, GIDE_SCAF_ATR_MASK))         ||
+			GIDE_SCAF_MSC_ATR.equals(new Atr(atr, GIDE_SCAF_MSC_ATR_MASK)) ||
+			GIDE_SCAF_TCL_ATR.equals(new Atr(atr, GIDE_SCAF_TCL_ATR_MASK));
 	}
-
 }

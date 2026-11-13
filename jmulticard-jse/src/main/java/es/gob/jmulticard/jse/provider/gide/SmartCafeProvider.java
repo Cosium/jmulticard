@@ -42,8 +42,9 @@ package es.gob.jmulticard.jse.provider.gide;
 import java.security.Provider;
 import java.security.ProviderException;
 
-import es.gob.jmulticard.apdu.connection.ApduConnection;
 import es.gob.jmulticard.card.gide.smartcafe.SmartCafePkcs15Applet;
+import es.gob.jmulticard.connection.ApduConnection;
+import es.gob.jmulticard.jse.provider.ProviderUtil;
 
 /** Proveedor criptogr&aacute;fico JCA para tarjeta G&amp;D SmartCafe con Applet PKCS#15.
  * Crea dos servicios:
@@ -69,18 +70,8 @@ public final class SmartCafeProvider extends Provider {
     private static final long serialVersionUID = -1046745919235177156L;
 
     private static final String INFO = "Proveedor para tarjeta G&D SmartCafe con Applet PKCS#15"; //$NON-NLS-1$
-    private static final double VERSION = 0.1d;
+    private static final double VERSION = 0.2;
     private static final String NAME = "SmartCafePkcs15JCAProvider"; //$NON-NLS-1$
-
-    private static ApduConnection defaultConnection = null;
-
-    /** Obtiene de forma est&aacute;tica el tipo de conexi&oacute;n de APDU que debe usar el <i>KeyStore</i>.
-     * Si es nula (se ha invocado al constructor por defecto), es el propio <code>KeyStore</code> el que decide que
-     * conexi&oacute;n usar.
-     * @return Conexi&oacute;n por defecto */
-    static ApduConnection getDefaultApduConnection() {
-    	return defaultConnection;
-    }
 
     /** Crea un proveedor JCA para tarjeta G&amp;D SmartCafe con Applet PKCS#15 con la conexi&oacute;n por defecto. */
     public SmartCafeProvider() {
@@ -92,14 +83,15 @@ public final class SmartCafeProvider extends Provider {
     public SmartCafeProvider(final ApduConnection conn) {
         super(NAME, VERSION, INFO);
 
+        final ApduConnection defaultConnection;
         try {
 			defaultConnection = conn == null ?
-				new es.gob.jmulticard.jse.smartcardio.SmartcardIoConnection() :
+				ProviderUtil.getDefaultConnection() :
 					conn;
 		}
         catch (final Exception e) {
 			throw new ProviderException(
-				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto: " + e, e //$NON-NLS-1$
+				"No se ha proporcionado una conexion con un lector y no ha podido instanciarse la por defecto", e //$NON-NLS-1$
 			);
 		}
 
@@ -108,14 +100,14 @@ public final class SmartCafeProvider extends Provider {
         	defaultConnection.close();
         }
         catch(final Exception e) {
-        	throw new ProviderException("No se ha podido inicializar el proveedor: " + e, e); //$NON-NLS-1$
+        	throw new ProviderException("No se ha podido inicializar el proveedor", e); //$NON-NLS-1$
         }
 
         // KeyStore
         put("KeyStore.GDSCPKCS15", "es.gob.jmulticard.jse.provider.gide.SmartCafeKeyStoreImpl"); //$NON-NLS-1$ //$NON-NLS-2$
 
         // Motores de firma
-        put("Signature.SHA1withRSA", "es.gob.jmulticard.jse.provider.gide.SmartCafeSignatureImpl$Sha1"); //$NON-NLS-1$ //$NON-NLS-2$
+        put("Signature.SHA1withRSA",   "es.gob.jmulticard.jse.provider.gide.SmartCafeSignatureImpl$Sha1"); //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA256withRSA", "es.gob.jmulticard.jse.provider.gide.SmartCafeSignatureImpl$Sha256"); //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA384withRSA", "es.gob.jmulticard.jse.provider.gide.SmartCafeSignatureImpl$Sha384"); //$NON-NLS-1$ //$NON-NLS-2$
         put("Signature.SHA512withRSA", "es.gob.jmulticard.jse.provider.gide.SmartCafeSignatureImpl$Sha512"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -153,5 +145,4 @@ public final class SmartCafeProvider extends Provider {
         put("Alg.Alias.Signature.SHA-512withRSAEncryption", SmartCafeProvider.SHA512WITH_RSA); //$NON-NLS-1$
         put("Alg.Alias.Signature.SHA512withRSAEncryption", SmartCafeProvider.SHA512WITH_RSA); //$NON-NLS-1$
     }
-
 }
