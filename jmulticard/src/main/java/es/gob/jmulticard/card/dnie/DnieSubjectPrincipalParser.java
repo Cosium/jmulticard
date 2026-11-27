@@ -1,10 +1,6 @@
 package es.gob.jmulticard.card.dnie;
 
-import javax.security.auth.x500.X500Principal;
-import java.security.cert.X509Certificate;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 /** Analizador del nombre X&#46;500 del titular de un DNIe.
  * @author Tom&aacute;s Garc&iacute;a-Mer&aacute;s. */
@@ -14,17 +10,6 @@ public class DnieSubjectPrincipalParser {
 	private final String surname1;
 	private final String surname2;
 	private final String id;
-
-  private static final Map<String, String> OIDC_ATTRIBUTES = new HashMap<>();
-	static {
-		OIDC_ATTRIBUTES.put("2.5.4.42", "GIVENNAME");
-		OIDC_ATTRIBUTES.put("2.5.4.4", "SURNAME");
-		OIDC_ATTRIBUTES.put("2.5.4.5", "SERIALNUMBER");
-	}
-
-  public DnieSubjectPrincipalParser(X509Certificate certificate) {
-    this(certificate.getSubjectX500Principal().getName(X500Principal.RFC1779, OIDC_ATTRIBUTES));
-  }
 
 	/** Construye un analizador del nombre X&#46;500 del titular de un DNIe.
 	 * @param subjectPrincipal Nombre X&#46;500 del titular. */
