@@ -74,7 +74,6 @@ import es.gob.jmulticard.apdu.iso7816four.MseSetComputationApduCommand;
 import es.gob.jmulticard.asn1.custom.fnmt.ceressc.CeresScPrKdf;
 import es.gob.jmulticard.asn1.der.pkcs1.DigestInfo;
 import es.gob.jmulticard.asn1.der.pkcs15.Cdf;
-import es.gob.jmulticard.asn1.der.pkcs15.Pkcs15Cdf;
 import es.gob.jmulticard.asn1.der.pkcs15.PrKdf;
 import es.gob.jmulticard.callback.CardWithRetriesPasswordCallback;
 import es.gob.jmulticard.card.AuthenticationModeLockedException;
@@ -178,7 +177,11 @@ public class Dnie extends AbstractIso7816EightCard implements Dni, Cwa14890Card 
         }
         this.cryptoHelper = cryptoHlpr;
 
-		loadCertificates();
+        // DNIe 1/2 does not support loading certificates without a PIN.
+        // So only load them when don't need a pin or when we can supply a PIN.
+        if (!needsPinForLoadingCerts() || pwc != null || ch != null) {
+            loadCertificates();
+        }
     }
 
 	//*************************************************************************
@@ -855,15 +858,7 @@ public class Dnie extends AbstractIso7816EightCard implements Dni, Cwa14890Card 
     	}
 		PrKdf prkdf;
 		try {
-			// Nos vamos al raiz antes de nada
-			selectMasterFile();
-
-			// Leemos el CDF
-			final byte[] cdfBytes = selectFileByLocationAndRead(CDF_LOCATION);
-
-			// Cargamos el CDF
-			final Pkcs15Cdf cdf = new Cdf();
-			cdf.setDerValue(cdfBytes);
+			Cdf cdf = readCdf();
 
 			JmcLogger.info(
 				Dnie.class.getName(),
@@ -934,6 +929,20 @@ public class Dnie extends AbstractIso7816EightCard implements Dni, Cwa14890Card 
 		// Sincronizamos claves y certificados
 		hideCertsWithoutKey();
     }
+
+	public Cdf readCdf() throws ApduConnectionException {
+		try {
+			// Nos vamos al raiz antes de nada
+			selectMasterFile();
+
+			final Cdf readCdf = new Cdf();
+			readCdf.setDerValue(selectFileByLocationAndRead(CDF_LOCATION));
+			return readCdf;
+		}
+		catch (final Exception e) {
+			throw new ApduConnectionException("Error leyendo el CDF de la tarjeta", e); //$NON-NLS-1$
+		}
+	}
 
 	/**
 	 * Oculta los alias certificados que no tienen una clave privada asociada.
